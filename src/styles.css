@@ -73,7 +73,6 @@ main { min-height: calc(100vh - 190px); }
 .benchmark-name-line { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .benchmark-title-row h3 { margin: 0 0 4px; color: var(--link); font-size: 19px; font-weight: 600; }
 .benchmark-title-row a:hover h3 { text-decoration: underline; }
-.full-name { margin: 0; color: #51595e; font-size: 12px; }
 .category-badge { flex: 0 0 auto; border-radius: 2px; padding: 4px 6px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
 .category-badge.generation { color: #41616c; background: var(--blue-soft); }
 .category-badge.robotics { color: #875027; background: var(--orange-soft); }
@@ -92,7 +91,6 @@ main { min-height: calc(100vh - 190px); }
 .detail-label-row { display: flex; gap: 10px; align-items: center; margin-bottom: 11px; }
 .status-dot { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 10px; }
 .status-dot i { width: 6px; height: 6px; border-radius: 50%; background: #378455; }
-.detail-full-name { margin: 7px 0 13px; color: #50595e; font-size: 14px; }
 .detail-summary { max-width: 700px; margin: 0; color: #555d61; line-height: 1.55; font-size: 12px; }
 .source-links { display: flex; gap: 8px; margin-top: 15px; }
 .source-links a { padding: 5px 8px; border: 1px solid #c7cbcd; border-radius: 2px; background: #fff; color: var(--link); font-size: 10px; }

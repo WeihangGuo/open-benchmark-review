@@ -371,8 +371,8 @@ grant execute on function public.is_admin() to anon, authenticated;
 insert into public.benchmarks (slug, name, full_name, summary, category, tags, year, venue, status, published_at)
 values
   ('vbench', 'VBench', 'Comprehensive Benchmark Suite for Video Generative Models', 'A multi-dimensional evaluation suite for text-to-video and image-to-video generation, with dedicated prompt sets and automatic metrics.', 'Video generation', array['Text-to-video','Image-to-video','16 dimensions'], 2024, 'CVPR', 'published', now()),
-  ('evalcrafter', 'EvalCrafter', 'Benchmarking and Evaluating Large Video Generation Models', 'Evaluates visual quality, motion quality, temporal consistency and text-video alignment with objective metrics and user studies.', 'Video generation', array['Text-to-video','Human study','Motion'], 2024, 'CVPR', 'published', now()),
-  ('t2v-compbench', 'T2V-CompBench', 'A Comprehensive Benchmark for Compositional Text-to-video Generation', 'Focuses on compositional generation, including attribute binding, spatial relationships, numeracy, motion binding and complex compositions.', 'Video generation', array['Compositionality','Text-to-video','Fine-grained'], 2025, 'CVPR', 'published', now())
+  ('libero', 'LIBERO', 'Benchmarking Knowledge Transfer for Lifelong Robot Learning', 'A lifelong robot learning benchmark with procedurally generated manipulation tasks for studying knowledge transfer across objects, spatial relationships, goals, and long-horizon behaviors.', 'Robotics', array['Robot manipulation','Lifelong learning','130 tasks'], 2023, 'NeurIPS', 'published', now()),
+  ('robotwin', 'RoboTwin', 'Dual-Arm Robot Benchmark with Generative Digital Twins', 'A scalable benchmark and data-generation platform for robust bimanual robotic manipulation with diverse tasks, objects, and strong domain randomization.', 'Robotics', array['Bimanual manipulation','Digital twins','50 tasks'], 2025, 'CVPR', 'published', now())
 on conflict (slug) do nothing;
 
 insert into public.benchmark_sources (benchmark_id, source_type, url, canonical_id)
@@ -380,10 +380,12 @@ select b.id, s.source_type, s.url, public.canonicalize_source_url(s.url)
 from (values
   ('vbench','github','https://github.com/Vchitect/VBench'),
   ('vbench','paper','https://openaccess.thecvf.com/content/CVPR2024/html/Huang_VBench_Comprehensive_Benchmark_Suite_for_Video_Generative_Models_CVPR_2024_paper.html'),
-  ('evalcrafter','github','https://github.com/EvalCrafter/EvalCrafter'),
-  ('evalcrafter','project_page','https://evalcrafter.github.io/'),
-  ('t2v-compbench','github','https://github.com/KaiyueSun98/T2V-CompBench'),
-  ('t2v-compbench','paper','https://arxiv.org/abs/2407.14505')
+  ('libero','github','https://github.com/Lifelong-Robot-Learning/LIBERO'),
+  ('libero','paper','https://arxiv.org/abs/2306.03310'),
+  ('libero','project_page','https://libero-project.github.io/main.html'),
+  ('robotwin','github','https://github.com/RoboTwin-Platform/RoboTwin'),
+  ('robotwin','paper','https://arxiv.org/abs/2506.18088'),
+  ('robotwin','project_page','https://robotwin-platform.github.io/')
 ) as s(slug, source_type, url)
 join public.benchmarks b on b.slug = s.slug
 on conflict (canonical_id) where canonical_id is not null do nothing;

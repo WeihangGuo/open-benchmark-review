@@ -10,6 +10,7 @@ import {
 } from "./lib/supabase";
 
 type Category = "Video generation" | "Robotics";
+type AuthProvider = "github" | "google";
 
 type Benchmark = {
   id: string;
@@ -238,15 +239,18 @@ function App() {
     window.location.hash = "#login";
   }, []);
 
-  const signIn = useCallback(async () => {
+  const signIn = useCallback(async (provider: AuthProvider) => {
     if (!supabase) {
       showNotice("The shared backend is not configured yet.");
       return;
     }
     if (!localStorage.getItem("obr-return-hash")) localStorage.setItem("obr-return-hash", "#home");
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: "github",
-      options: { redirectTo: authRedirectUrl() },
+      provider,
+      options: {
+        redirectTo: authRedirectUrl(),
+        ...(provider === "google" ? { queryParams: { prompt: "select_account" } } : {}),
+      },
     });
     if (error) showNotice(error.message);
   }, [showNotice]);
@@ -390,7 +394,7 @@ function Header({
   );
 }
 
-function LoginPage({ user, authLoading, signIn }: { user: User | null; authLoading: boolean; signIn: () => Promise<void> }) {
+function LoginPage({ user, authLoading, signIn }: { user: User | null; authLoading: boolean; signIn: (provider: AuthProvider) => Promise<void> }) {
   const name = githubName(user);
   return (
     <div className="auth-page">
@@ -405,12 +409,18 @@ function LoginPage({ user, authLoading, signIn }: { user: User | null; authLoadi
         ) : (
           <>
             <h1>Login</h1>
-            <p>Use a GitHub account to submit benchmarks, comment, reply, and vote. Authorization starts only after you click the button below.</p>
-            <button className="github-login-button" disabled={authLoading} onClick={() => void signIn()}>
-              <span className="github-mark" aria-hidden="true">GH</span>
-              {authLoading ? "Checking session…" : "Continue with GitHub"}
-            </button>
-            <p className="auth-note">GitHub may reuse the account currently signed in within this browser.</p>
+            <p>Use GitHub or Google to submit benchmarks, comment, reply, and vote. Authorization starts only after you choose a provider below.</p>
+            <div className="oauth-options">
+              <button className="oauth-login-button github-login-button" disabled={authLoading} onClick={() => void signIn("github")}>
+                <span className="github-mark" aria-hidden="true">GH</span>
+                {authLoading ? "Checking session…" : "Continue with GitHub"}
+              </button>
+              <button className="oauth-login-button google-login-button" disabled={authLoading} onClick={() => void signIn("google")}>
+                <span className="google-mark" aria-hidden="true">G</span>
+                Continue with Google
+              </button>
+            </div>
+            <p className="auth-note">Google will ask you to choose an account. GitHub may reuse the account currently signed in within this browser.</p>
           </>
         )}
         <a className="back-link" href="#home">← Back to benchmarks</a>
@@ -447,13 +457,14 @@ function AccountPage({ user, role, authLoading, goToLogin, signOut }: {
   const name = githubName(user);
   const avatar = githubAvatar(user);
   const githubUsername = user.user_metadata?.user_name || user.user_metadata?.preferred_username || "";
+  const authProvider = user.app_metadata?.provider === "google" ? "Google" : "GitHub";
 
   return (
     <div className="account-page">
       <div className="breadcrumbs"><a href="#home">Open Benchmark Review</a><span>/</span><span>Account</span></div>
       <section className="account-heading">
         {avatar ? <img src={avatar} alt="" /> : <span className="account-avatar">{initials(name)}</span>}
-        <div><p className="eyebrow">Community account</p><h1>{name}</h1><p>Signed in with GitHub · <span className="account-role">{role === "admin" ? "Administrator" : "Community member"}</span></p></div>
+        <div><p className="eyebrow">Community account</p><h1>{name}</h1><p>Signed in with {authProvider} · <span className="account-role">{role === "admin" ? "Administrator" : "Community member"}</span></p></div>
       </section>
       <div className="account-layout">
         <section className="account-panel">
@@ -462,11 +473,11 @@ function AccountPage({ user, role, authLoading, goToLogin, signOut }: {
             <div><strong>{activityLoading ? "–" : activity.comments}</strong><span>Comments</span></div>
             <div><strong>{activityLoading ? "–" : activity.submissions}</strong><span>Benchmark submissions</span></div>
           </div>
-          <p>Your comments and submissions are attributed to this GitHub identity.</p>
+          <p>Your comments and submissions are attributed to this {authProvider} identity.</p>
         </section>
         <aside className="account-panel account-controls">
           <h2>Account</h2>
-          {githubUsername && <a href={`https://github.com/${githubUsername}`} target="_blank" rel="noreferrer">View GitHub profile ↗</a>}
+          {authProvider === "GitHub" && githubUsername && <a href={`https://github.com/${githubUsername}`} target="_blank" rel="noreferrer">View GitHub profile ↗</a>}
           {role === "admin" && <a href="#admin">Open admin queue →</a>}
           <button className="secondary-button sign-out-control" onClick={() => void signOut()}>Sign out</button>
         </aside>

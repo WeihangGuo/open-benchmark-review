@@ -247,10 +247,15 @@ main { min-height: calc(100vh - 190px); }
 .auth-card h1 { margin: 0 0 10px; font-size: 27px; }
 .auth-card > p:not(.eyebrow) { margin: 0 0 19px; color: var(--muted); font-size: 12px; line-height: 1.55; }
 .auth-card .auth-action { display: inline-block; }
-.github-login-button { width: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; padding: 9px 13px; border: 1px solid #25292d; border-radius: 2px; color: #fff; background: #24292f; font-size: 12px; font-weight: 700; }
+.oauth-options { display: grid; gap: 8px; }
+.oauth-login-button { width: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; padding: 9px 13px; border-radius: 2px; font-size: 12px; font-weight: 700; }
+.github-login-button { border: 1px solid #25292d; color: #fff; background: #24292f; }
 .github-login-button:hover { background: #15181b; }
-.github-login-button:disabled { cursor: default; opacity: .6; }
+.oauth-login-button:disabled { cursor: default; opacity: .6; }
 .github-mark { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; color: #24292f; background: #fff; font-size: 7px; font-weight: 800; }
+.google-login-button { border: 1px solid #b9bec2; color: #303438; background: #fff; }
+.google-login-button:hover { background: #f5f6f6; }
+.google-mark { width: 22px; height: 22px; display: grid; place-items: center; color: #4285f4; background: #fff; font-size: 15px; font-weight: 800; }
 .auth-card .auth-note { margin: 9px 0 22px !important; font-size: 9px !important; }
 .back-link { display: block; margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--soft-line); color: var(--link); font-size: 10px; }
 

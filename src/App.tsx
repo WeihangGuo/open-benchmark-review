@@ -529,7 +529,7 @@ function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
     <article className="benchmark-card">
       <div className="benchmark-main">
         <div className="benchmark-title-row"><div className="benchmark-heading"><div className="benchmark-name-line"><a href={`#benchmark/${benchmark.id}`}><h3>{benchmark.name}</h3></a><span className={`category-badge ${benchmark.category === "Video generation" ? "generation" : "robotics"}`}>{benchmark.category}</span></div><p className="full-name">{benchmark.fullName}</p></div></div>
-        <p className="benchmark-summary">{benchmark.summary}</p><div className="tag-row">{benchmark.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+        <p className="benchmark-summary">{benchmark.summary}</p>
       </div>
       <div className="benchmark-meta">
         <div><span>Introduced</span><strong>{benchmark.venue} {benchmark.year}</strong></div><div><span>Discussion</span><strong>{benchmark.comments} comments</strong></div><div><span>Last activity</span><strong>{benchmark.updated}</strong></div><a className="view-link" href={`#benchmark/${benchmark.id}`}>View discussion <span>→</span></a>

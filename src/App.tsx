@@ -306,6 +306,7 @@ function App() {
           <BenchmarkView
             benchmark={selected}
             user={user}
+            role={role}
             databaseReady={databaseReady}
             goToLogin={goToLogin}
             showNotice={showNotice}
@@ -537,9 +538,10 @@ function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
   );
 }
 
-function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, refreshCatalog }: {
+function BenchmarkView({ benchmark, user, role, databaseReady, goToLogin, showNotice, refreshCatalog }: {
   benchmark: Benchmark;
   user: User | null;
+  role: "user" | "admin";
   databaseReady: boolean;
   goToLogin: (returnHash?: string) => void;
   showNotice: (message: string) => void;
@@ -661,7 +663,19 @@ function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, 
   const deleteComment = async (comment: Comment) => {
     if (!supabase || !window.confirm("Delete this comment?")) return;
     const { error } = await supabase.from("comments").delete().eq("id", comment.id);
-    if (error) showNotice(error.message); else await Promise.all([loadComments(), refreshCatalog()]);
+    if (error) showNotice(error.message); else {
+      await Promise.all([loadComments(), refreshCatalog()]);
+      showNotice("Comment deleted.");
+    }
+  };
+
+  const hideComment = async (comment: Comment) => {
+    if (!supabase || !window.confirm("Hide this comment from the public discussion?")) return;
+    const { error } = await supabase.from("comments").update({ status: "hidden" }).eq("id", comment.id);
+    if (error) showNotice(error.message); else {
+      await Promise.all([loadComments(), refreshCatalog()]);
+      showNotice("Comment hidden.");
+    }
   };
 
   const reportComment = async (comment: Comment) => {
@@ -695,7 +709,7 @@ function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, 
               <div className="composer-footer"><span>Be specific, constructive, and link evidence when possible.</span><button className="primary-button" type="submit" disabled={posting || !databaseReady}>{databaseReady ? (posting ? "Posting…" : "Post comment") : "Database pending"}</button></div>
             </form>
             <div className="comments-list">
-              {visibleComments.map((comment) => <CommentCard key={comment.id} comment={comment} own={Boolean(user && comment.userId === user.id)} onHelpful={() => void toggleHelpful(comment)} onReply={() => { setReplyTo(comment); document.getElementById("comment-form")?.scrollIntoView({ behavior: "smooth" }); }} onEdit={() => void editComment(comment)} onDelete={() => void deleteComment(comment)} onReport={() => void reportComment(comment)} onShare={() => { void navigator.clipboard?.writeText(window.location.href); showNotice("Page link copied."); }} />)}
+              {visibleComments.map((comment) => <CommentCard key={comment.id} comment={comment} own={Boolean(user && comment.userId === user.id)} canModerate={role === "admin"} onHelpful={() => void toggleHelpful(comment)} onReply={() => { setReplyTo(comment); document.getElementById("comment-form")?.scrollIntoView({ behavior: "smooth" }); }} onEdit={() => void editComment(comment)} onHide={() => void hideComment(comment)} onDelete={() => void deleteComment(comment)} onReport={() => void reportComment(comment)} onShare={() => { void navigator.clipboard?.writeText(window.location.href); showNotice("Page link copied."); }} />)}
               {visibleComments.length === 0 && <div className="empty-comments">No comments in this category yet. Start the discussion.</div>}
             </div>
           </section>
@@ -706,12 +720,12 @@ function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, 
   );
 }
 
-function CommentCard({ comment, own, onHelpful, onReply, onEdit, onDelete, onReport, onShare }: { comment: Comment; own: boolean; onHelpful: () => void; onReply: () => void; onEdit: () => void; onDelete: () => void; onReport: () => void; onShare: () => void }) {
+function CommentCard({ comment, own, canModerate, onHelpful, onReply, onEdit, onHide, onDelete, onReport, onShare }: { comment: Comment; own: boolean; canModerate: boolean; onHelpful: () => void; onReply: () => void; onEdit: () => void; onHide: () => void; onDelete: () => void; onReport: () => void; onShare: () => void }) {
   return (
     <article className={`comment-card ${comment.parentId ? "reply" : ""}`}>
       <div className="comment-author">{comment.avatar ? <img className="avatar avatar-image" src={comment.avatar} alt="" /> : <span className="avatar">{comment.initials}</span>}<div><strong>{comment.author}</strong><span>{comment.affiliation}</span></div><time>{comment.time}</time></div>
       <div className="comment-tags"><span>{comment.tag}</span>{comment.rating !== undefined && <span className="score">Rating: {comment.rating}/5</span>}{comment.confidence !== undefined && <span className="confidence">Confidence: {comment.confidence}/5</span>}{comment.version && <span className="version">Used {comment.version}</span>}</div><p>{comment.body}</p>{comment.evidence && <div className="evidence"><strong>Evidence</strong><a href={comment.evidence} target="_blank" rel="noreferrer">{comment.evidence}</a></div>}
-      <div className="comment-actions"><button className={comment.voted ? "voted" : ""} onClick={onHelpful}>↑ Helpful <span>{comment.helpful}</span></button><button onClick={onReply}>Reply</button>{own && <><button onClick={onEdit}>Edit</button><button onClick={onDelete}>Delete</button></>}<button onClick={onShare}>Share</button>{!own && <button className="report" onClick={onReport}>Report</button>}</div>
+      <div className="comment-actions"><button className={comment.voted ? "voted" : ""} onClick={onHelpful}>↑ Helpful <span>{comment.helpful}</span></button><button onClick={onReply}>Reply</button>{own && <button onClick={onEdit}>Edit</button>}{canModerate && <button className="moderate" onClick={onHide}>Hide</button>}{(own || canModerate) && <button className={canModerate ? "moderate" : ""} onClick={onDelete}>Delete</button>}<button onClick={onShare}>Share</button>{!own && !canModerate && <button className="report" onClick={onReport}>Report</button>}</div>
     </article>
   );
 }

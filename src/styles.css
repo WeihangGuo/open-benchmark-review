@@ -151,6 +151,7 @@ main { min-height: calc(100vh - 190px); }
 .comment-actions { display: flex; gap: 14px; margin-left: 36px; padding-top: 8px; border-top: 1px solid var(--soft-line); }
 .comment-actions button { border: 0; padding: 0; color: var(--link); background: transparent; font-size: 9px; }
 .comment-actions .report { margin-left: auto; color: #8a6b65; }
+.comment-actions .moderate { color: #a23d35; font-weight: 700; }
 .side-column { display: flex; flex-direction: column; gap: 15px; }
 .side-card { padding-top: 10px; border-top: 1px solid #adb2b4; }
 .side-card h3 { margin: 0 0 8px; font-size: 11px; }

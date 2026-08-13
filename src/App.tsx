@@ -413,7 +413,7 @@ function Header({
       <div className="site-subnav">
         <div>
           <span>Open benchmarks. Open discussion. Better evidence.</span>
-          <nav><a href="#home">Benchmarks</a><a href="#about">About</a><a href="https://github.com/WeihangGuo/open-benchmark-review" target="_blank" rel="noreferrer">Open source</a></nav>
+          <nav><a href="#home">Benchmarks</a><a href="https://github.com/WeihangGuo/open-benchmark-review" target="_blank" rel="noreferrer">Open source</a></nav>
         </div>
       </div>
     </>
@@ -451,7 +451,6 @@ function HomeView({ benchmarks, openSubmit }: { benchmarks: Benchmark[]; openSub
           {filtered.length === 0 && <div className="empty-state"><h3>No matching benchmark yet</h3><p>Try a broader search, or help the community by adding it.</p><button className="primary-button" onClick={openSubmit}>Add a benchmark</button></div>}
         </div>
       </section>
-      <section className="about-strip" id="about"><strong>About Open Benchmark Review</strong><p>One canonical page per benchmark. Anyone with a GitHub account can submit and comment; administrators only resolve duplicate pages and moderate abuse. There are no reviewer or area-chair roles.</p></section>
     </div>
   );
 }
@@ -745,7 +744,7 @@ function AdminView({ user, role, signIn, showNotice, onQueueChange }: { user: Us
 }
 
 function Footer() {
-  return <footer className="site-footer"><div><strong>OpenBenchmarkReview</strong><span>Open source · Community moderated · Independent</span></div><nav><a href="#home">Benchmarks</a><a href="#about">About</a><a href="https://github.com/WeihangGuo/open-benchmark-review" target="_blank" rel="noreferrer">GitHub</a></nav><p>Initiated by <a href="https://github.com/WeihangGuo" target="_blank" rel="noreferrer">Weihang Guo</a>.</p></footer>;
+  return <footer className="site-footer"><div><strong>OpenBenchmarkReview</strong><span>Open source · Community moderated · Independent</span></div><nav><a href="#home">Benchmarks</a><a href="https://github.com/WeihangGuo/open-benchmark-review" target="_blank" rel="noreferrer">GitHub</a></nav><p>Initiated by <a href="https://github.com/WeihangGuo" target="_blank" rel="noreferrer">Weihang Guo</a>.</p></footer>;
 }
 
 export default App;

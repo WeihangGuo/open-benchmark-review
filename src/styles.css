@@ -88,10 +88,6 @@ main { min-height: calc(100vh - 190px); }
 .view-link span { float: right; }
 .empty-state, .empty-comments { padding: 45px 15px; text-align: center; color: var(--muted); }
 .empty-state h3 { margin: 0 0 6px; font-size: 18px; color: var(--ink); }
-.about-strip { margin: 12px 0 50px; padding: 14px 16px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #f1f1ef; }
-.about-strip strong { font-size: 13px; }
-.about-strip p { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
-
 .breadcrumbs { padding: 23px 0 14px; color: #777e82; font-size: 11px; display: flex; gap: 7px; }
 .breadcrumbs a { color: var(--link); }
 .detail-hero { display: grid; grid-template-columns: 1fr 255px; gap: 36px; padding: 10px 0 24px; }

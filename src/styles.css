@@ -228,8 +228,10 @@ main { min-height: calc(100vh - 190px); }
 .setup-notice { padding: 8px 16px; border-bottom: 1px solid #dfc6a7; color: #78542f; background: #fff4df; text-align: center; font-size: 11px; }
 .avatar-image { object-fit: cover; }
 .composer-options { margin: 0 13px 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.comment-fields { display: flex; align-items: center; gap: 12px; }
 .composer-options label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 9px; }
 .composer-options select { padding: 4px 6px; border: 1px solid #c8ccce; background: #fff; font-size: 9px; }
+.guest-name-field input { width: 150px; padding: 4px 6px; border: 1px solid #c8ccce; background: #fff; font-size: 9px; }
 .reply-target { display: flex; align-items: center; gap: 7px; color: #5c666b; font-size: 9px; }
 .reply-target button { border: 0; background: transparent; color: #777; }
 .evidence a { color: var(--link); overflow-wrap: anywhere; font-size: 9px; }
@@ -241,6 +243,7 @@ main { min-height: calc(100vh - 190px); }
 .access-panel { padding: 70px 0; text-align: center; }
 .access-panel h1 { margin: 0 0 8px; font-size: 28px; }
 .access-panel p { margin: 0 auto 18px; color: var(--muted); }
+.guest-comment-notice { margin-top: 7px !important; color: #47646e !important; font-size: 11px !important; font-weight: 700; }
 
 .auth-page { width: min(1100px, calc(100% - 32px)); min-height: 520px; margin: 0 auto; padding: 70px 0; }
 .auth-card { width: min(440px, 100%); margin: 0 auto; padding: 25px 27px; border: 1px solid var(--line); border-top: 3px solid var(--red); border-radius: 2px; background: #fff; }
@@ -304,6 +307,8 @@ main { min-height: calc(100vh - 190px); }
   .comment-card.reply { margin-left: 14px; }
   .comment-tags, .comment-card > p, .evidence, .comment-actions { margin-left: 0; }
   .composer-footer > span { display: none; }
+  .composer-options, .comment-fields { align-items: flex-start; flex-direction: column; }
+  .guest-name-field input { width: min(210px, 60vw); }
   .admin-heading { align-items: flex-start; flex-direction: column; gap: 10px; }
   .account-layout { grid-template-columns: 1fr; }
   .queue-top { flex-direction: column; }

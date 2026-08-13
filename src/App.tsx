@@ -30,7 +30,7 @@ type Benchmark = {
 
 type Comment = {
   id: string;
-  userId: string;
+  userId?: string;
   parentId?: string;
   author: string;
   initials: string;
@@ -265,6 +265,7 @@ function App() {
   const openSubmit = () => {
     if (!user) {
       localStorage.setItem("obr-open-submit-after-auth", "true");
+      showNotice("Please log in to add a benchmark (you don't need to be the author of the benchmark).");
       goToLogin("#home");
       return;
     }
@@ -501,7 +502,7 @@ function HomeView({ benchmarks, openSubmit, query, setQuery }: { benchmarks: Ben
 
   return (
     <div className="content-page">
-      <section className="page-intro"><div><h1>Benchmarks</h1><p>Community discussion and practical context for machine-learning evaluation.</p></div><button className="primary-button" onClick={openSubmit}>Add a benchmark</button></section>
+      <section className="page-intro"><div><h1>Benchmarks</h1><p>Community discussion and practical context for machine-learning evaluation.</p><p className="guest-comment-notice">No login required to comment.</p></div><button className="primary-button" onClick={openSubmit}>Add a benchmark</button></section>
       {promptVisible && <aside className="community-prompt"><button aria-label="Dismiss" onClick={() => setPromptVisible(false)}>×</button><strong>What do you wish you had known before using this benchmark?</strong><span>Share a specific experience, version, limitation, or piece of evidence. Comments are public and community-moderated.</span></aside>}
       <section className="browse-section" id="browse">
         <div className="section-heading"><div><h2>All benchmarks</h2></div><p>{filtered.length} results · {commentCount} comments</p></div>
@@ -546,6 +547,7 @@ function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, 
   const [filterTag, setFilterTag] = useState("All comments");
   const [commentTag, setCommentTag] = useState("General");
   const [commentText, setCommentText] = useState("");
+  const [guestName, setGuestName] = useState("");
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [posting, setPosting] = useState(false);
   const [activeSection, setActiveSection] = useState<"overview" | "discussion" | "sources">("overview");
@@ -560,12 +562,12 @@ function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, 
       setComments([]);
       return;
     }
-    const { data: rows, error } = await supabase.from("comments").select("id, user_id, parent_id, content, tag, benchmark_version, evidence_url, created_at").eq("benchmark_id", benchmark.databaseId).eq("status", "published").order("created_at", { ascending: true });
+    const { data: rows, error } = await supabase.from("comments").select("id, user_id, guest_name, parent_id, content, tag, benchmark_version, evidence_url, created_at").eq("benchmark_id", benchmark.databaseId).eq("status", "published").order("created_at", { ascending: true });
     if (error) {
       showNotice(error.message);
       return;
     }
-    const userIds = [...new Set((rows ?? []).map((row) => row.user_id))];
+    const userIds = [...new Set((rows ?? []).map((row) => row.user_id).filter(Boolean))];
     const commentIds = (rows ?? []).map((row) => row.id);
     const [{ data: profiles }, { data: votes }] = await Promise.all([
       userIds.length ? supabase.from("profiles").select("id, username, avatar_url").in("id", userIds) : Promise.resolve({ data: [] }),
@@ -580,15 +582,15 @@ function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, 
     }
     setComments((rows ?? []).map((row) => {
       const profile = profileMap.get(row.user_id);
-      const name = profile?.username || "Community member";
+      const name = profile?.username || row.guest_name || "Guest";
       return {
         id: row.id,
-        userId: row.user_id,
+        userId: row.user_id || undefined,
         parentId: row.parent_id || undefined,
         author: name,
         initials: initials(name),
         avatar: profile?.avatar_url || undefined,
-        affiliation: "GitHub community member",
+        affiliation: profile ? "Community member" : "Guest commenter",
         tag: row.tag,
         body: row.content,
         evidence: row.evidence_url || undefined,
@@ -605,13 +607,13 @@ function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, 
 
   const submitComment = async (event: FormEvent) => {
     event.preventDefault();
-    if (!user) {
-      goToLogin(`#benchmark/${benchmark.id}`);
+    if (!supabase || !databaseReady || !benchmark.databaseId || commentText.trim().length < 2) return;
+    if (!user && guestName.trim().length < 2) {
+      showNotice("Please enter a display name to comment.");
       return;
     }
-    if (!supabase || !databaseReady || !benchmark.databaseId || commentText.trim().length < 2) return;
     setPosting(true);
-    const { error } = await supabase.from("comments").insert({ benchmark_id: benchmark.databaseId, user_id: user.id, parent_id: replyTo?.id ?? null, content: commentText.trim(), tag: commentTag });
+    const { error } = await supabase.from("comments").insert({ benchmark_id: benchmark.databaseId, user_id: user?.id ?? null, guest_name: user ? null : guestName.trim(), parent_id: replyTo?.id ?? null, content: commentText.trim(), tag: commentTag });
     setPosting(false);
     if (error) {
       showNotice(error.message);
@@ -676,12 +678,12 @@ function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, 
           <section className="discussion-section" id="discussion">
             <div className="discussion-heading"><div><p className="eyebrow">Open discussion</p><h2>Community comments</h2></div><select value={filterTag} onChange={(event) => setFilterTag(event.target.value)} aria-label="Filter comments">{["All comments", "Metric validity", "Reproducibility", "Use case", "Data quality", "General"].map((item) => <option key={item}>{item}</option>)}</select></div>
             <form className="comment-composer" id="comment-form" onSubmit={submitComment}>
-              <div className="composer-top"><span className="avatar">{user ? initials(githubName(user)) : "?"}</span><div><strong>{user ? "Add to the discussion" : "Sign in to comment"}</strong><span>Share what you observed and the context needed to interpret it.</span></div></div>
-              {user && databaseReady && <><div className="composer-options"><label>Topic <select value={commentTag} onChange={(event) => setCommentTag(event.target.value)}>{["General", "Metric validity", "Reproducibility", "Use case", "Data quality"].map((item) => <option key={item}>{item}</option>)}</select></label>{replyTo && <div className="reply-target">Replying to @{replyTo.author}<button type="button" onClick={() => setReplyTo(null)}>×</button></div>}</div><textarea value={commentText} onChange={(event) => setCommentText(event.target.value)} placeholder="What do you wish you had known before using this benchmark?" rows={4} minLength={2} required /></>}
-              <div className="composer-footer"><span>Be specific, constructive, and link evidence when possible.</span><button className="primary-button" type="submit" disabled={posting}>{user ? (databaseReady ? (posting ? "Posting…" : "Post comment") : "Database pending") : "Sign in with GitHub"}</button></div>
+              <div className="composer-top"><span className="avatar">{user ? initials(githubName(user)) : initials(guestName || "Guest")}</span><div><strong>{user ? "Add to the discussion" : "Comment without logging in"}</strong><span>Share what you observed and the context needed to interpret it.</span></div></div>
+              {databaseReady && <><div className="composer-options"><div className="comment-fields">{!user && <label className="guest-name-field">Display name <input value={guestName} onChange={(event) => setGuestName(event.target.value)} placeholder="Your name" minLength={2} maxLength={80} required /></label>}<label>Topic <select value={commentTag} onChange={(event) => setCommentTag(event.target.value)}>{["General", "Metric validity", "Reproducibility", "Use case", "Data quality"].map((item) => <option key={item}>{item}</option>)}</select></label></div>{replyTo && <div className="reply-target">Replying to @{replyTo.author}<button type="button" onClick={() => setReplyTo(null)}>×</button></div>}</div><textarea value={commentText} onChange={(event) => setCommentText(event.target.value)} placeholder="What do you wish you had known before using this benchmark?" rows={4} minLength={2} required /></>}
+              <div className="composer-footer"><span>Be specific, constructive, and link evidence when possible.</span><button className="primary-button" type="submit" disabled={posting || !databaseReady}>{databaseReady ? (posting ? "Posting…" : "Post comment") : "Database pending"}</button></div>
             </form>
             <div className="comments-list">
-              {visibleComments.map((comment) => <CommentCard key={comment.id} comment={comment} own={comment.userId === user?.id} onHelpful={() => void toggleHelpful(comment)} onReply={() => { setReplyTo(comment); document.getElementById("comment-form")?.scrollIntoView({ behavior: "smooth" }); }} onEdit={() => void editComment(comment)} onDelete={() => void deleteComment(comment)} onReport={() => void reportComment(comment)} onShare={() => { void navigator.clipboard?.writeText(window.location.href); showNotice("Page link copied."); }} />)}
+              {visibleComments.map((comment) => <CommentCard key={comment.id} comment={comment} own={Boolean(user && comment.userId === user.id)} onHelpful={() => void toggleHelpful(comment)} onReply={() => { setReplyTo(comment); document.getElementById("comment-form")?.scrollIntoView({ behavior: "smooth" }); }} onEdit={() => void editComment(comment)} onDelete={() => void deleteComment(comment)} onReport={() => void reportComment(comment)} onShare={() => { void navigator.clipboard?.writeText(window.location.href); showNotice("Page link copied."); }} />)}
               {visibleComments.length === 0 && <div className="empty-comments">No comments in this category yet. Start the discussion.</div>}
             </div>
           </section>

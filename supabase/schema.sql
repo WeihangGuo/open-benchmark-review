@@ -49,7 +49,8 @@ create index if not exists benchmark_sources_benchmark_idx
 create table if not exists public.comments (
   id uuid primary key default gen_random_uuid(),
   benchmark_id uuid not null references public.benchmarks(id) on delete cascade,
-  user_id uuid not null references public.profiles(id) on delete cascade,
+  user_id uuid references public.profiles(id) on delete cascade,
+  guest_name text,
   parent_id uuid references public.comments(id) on delete cascade,
   content text not null check (char_length(content) between 2 and 8000),
   tag text not null default 'General',
@@ -58,6 +59,14 @@ create table if not exists public.comments (
   status text not null default 'published' check (status in ('published', 'hidden')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+);
+
+alter table public.comments add column if not exists guest_name text;
+alter table public.comments alter column user_id drop not null;
+alter table public.comments drop constraint if exists comments_identity_check;
+alter table public.comments add constraint comments_identity_check check (
+  (user_id is not null and guest_name is null)
+  or (user_id is null and char_length(trim(guest_name)) between 2 and 80)
 );
 
 create index if not exists comments_benchmark_created_idx
@@ -320,7 +329,11 @@ create policy comments_visible_read on public.comments for select
 drop policy if exists comments_owner_insert on public.comments;
 create policy comments_owner_insert on public.comments for insert
   with check (
-    user_id = auth.uid()
+    status = 'published'
+    and (
+      (auth.uid() is not null and user_id = auth.uid() and guest_name is null)
+      or (auth.uid() is null and user_id is null and char_length(trim(guest_name)) between 2 and 80)
+    )
     and exists (select 1 from public.benchmarks b where b.id = benchmark_id and b.status = 'published')
   );
 drop policy if exists comments_owner_update on public.comments;
@@ -358,6 +371,7 @@ grant select on public.profiles, public.benchmarks, public.benchmark_sources,
   public.comments, public.comment_votes to anon, authenticated;
 grant update on public.profiles to authenticated;
 grant insert, update, delete on public.comments to authenticated;
+grant insert on public.comments to anon;
 grant insert, delete on public.comment_votes to authenticated;
 grant insert on public.reports to authenticated;
 grant select, update on public.reports to authenticated;

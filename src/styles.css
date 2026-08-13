@@ -243,7 +243,7 @@ main { min-height: calc(100vh - 190px); }
 .access-panel { padding: 70px 0; text-align: center; }
 .access-panel h1 { margin: 0 0 8px; font-size: 28px; }
 .access-panel p { margin: 0 auto 18px; color: var(--muted); }
-.guest-comment-notice { margin-top: 7px !important; color: #47646e !important; font-size: 11px !important; font-weight: 700; }
+.guest-comment-notice { margin: 0 !important; color: #47646e !important; font-size: 11px !important; font-weight: 700; }
 
 .auth-page { width: min(1100px, calc(100% - 32px)); min-height: 520px; margin: 0 auto; padding: 70px 0; }
 .auth-card { width: min(440px, 100%); margin: 0 auto; padding: 25px 27px; border: 1px solid var(--line); border-top: 3px solid var(--red); border-radius: 2px; background: #fff; }

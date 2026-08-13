@@ -502,7 +502,7 @@ function HomeView({ benchmarks, openSubmit, query, setQuery }: { benchmarks: Ben
 
   return (
     <div className="content-page">
-      <section className="page-intro"><div><h1>Benchmarks</h1><p>Community discussion and practical context for machine-learning evaluation.</p><p className="guest-comment-notice">No login required to comment.</p></div><button className="primary-button" onClick={openSubmit}>Add a benchmark</button></section>
+      <section className="page-intro"><p className="guest-comment-notice">No login required to comment.</p><button className="primary-button" onClick={openSubmit}>Add a benchmark</button></section>
       {promptVisible && <aside className="community-prompt"><button aria-label="Dismiss" onClick={() => setPromptVisible(false)}>×</button><strong>What do you wish you had known before using this benchmark?</strong><span>Share a specific experience, version, limitation, or piece of evidence. Comments are public and community-moderated.</span></aside>}
       <section className="browse-section" id="browse">
         <div className="section-heading"><div><h2>All benchmarks</h2></div><p>{filtered.length} results · {commentCount} comments</p></div>

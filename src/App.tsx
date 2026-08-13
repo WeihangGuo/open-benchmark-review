@@ -572,6 +572,12 @@ function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, 
   const [commentText, setCommentText] = useState("");
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [posting, setPosting] = useState(false);
+  const [activeSection, setActiveSection] = useState<"overview" | "discussion" | "sources">("overview");
+
+  const scrollToSection = (section: "overview" | "discussion" | "sources") => {
+    setActiveSection(section);
+    document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const loadComments = useCallback(async () => {
     if (!supabase || !benchmark.databaseId || !databaseReady) {
@@ -684,10 +690,10 @@ function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, 
     <div className="detail-page">
       <div className="breadcrumbs"><a href="#home">Benchmarks</a><span>/</span><span>{benchmark.name}</span></div>
       <section className="detail-hero">
-        <div className="detail-copy"><div className="detail-label-row"><span className={`category-badge ${benchmark.category === "Video generation" ? "generation" : "action"}`}>{benchmark.category}</span><span className="status-dot"><i /> Open discussion</span></div><h1>{benchmark.name}</h1><p className="detail-full-name">{benchmark.fullName}</p><p className="detail-summary">{benchmark.summary}</p><div className="source-links">{benchmark.paper && <a href={benchmark.paper} target="_blank" rel="noreferrer">Paper ↗</a>}{benchmark.repo && <a href={benchmark.repo} target="_blank" rel="noreferrer">Official source ↗</a>}</div></div>
+        <div className="detail-copy"><div className="detail-label-row"><span className={`category-badge ${benchmark.category === "Video generation" ? "generation" : "action"}`}>{benchmark.category}</span><span className="status-dot"><i /> Open discussion</span></div><h1>{benchmark.name}</h1><p className="detail-full-name">{benchmark.fullName}</p><p className="detail-summary">{benchmark.summary}</p><div className="source-links" id="sources">{benchmark.paper && <a href={benchmark.paper} target="_blank" rel="noreferrer">Paper ↗</a>}{benchmark.repo && <a href={benchmark.repo} target="_blank" rel="noreferrer">Official source ↗</a>}</div></div>
         <aside className="fact-card"><h2>Benchmark facts</h2><dl><div><dt>Introduced</dt><dd>{benchmark.venue} {benchmark.year}</dd></div><div><dt>Primary task</dt><dd>{benchmark.category}</dd></div><div><dt>Source status</dt><dd><span className="verified">✓ Indexed</span></dd></div><div><dt>Comments</dt><dd>{comments.length}</dd></div></dl><button className="plain-link" onClick={() => document.getElementById("comment-form")?.scrollIntoView({ behavior: "smooth" })}>Join the discussion →</button></aside>
       </section>
-      <nav className="detail-tabs" aria-label="Benchmark sections"><a href="#overview" className="active">Overview</a><a href="#discussion">Comments <span>{comments.length}</span></a><a href="#sources">Sources</a></nav>
+      <nav className="detail-tabs" aria-label="Benchmark sections"><button className={activeSection === "overview" ? "active" : ""} onClick={() => scrollToSection("overview")}>Overview</button><button className={activeSection === "discussion" ? "active" : ""} onClick={() => scrollToSection("discussion")}>Comments <span>{comments.length}</span></button><button className={activeSection === "sources" ? "active" : ""} onClick={() => scrollToSection("sources")}>Sources</button></nav>
       <div className="detail-layout">
         <div className="detail-content">
           <section className="overview-panel" id="overview"><p className="eyebrow">Community overview</p><h2>What this benchmark is useful for</h2><p>Community members can use {benchmark.name} to discuss practical experience in <strong>{benchmark.category.toLowerCase()}</strong>, including failure modes, reproducibility, and metric validity.</p><div className="overview-columns"><div><h3>Useful comment topics</h3><ul><li>Exact benchmark version and settings</li><li>Reproduction experience</li><li>Known limitations and failure cases</li></ul></div><div className="caution"><h3>Before making claims</h3><ul><li>Report preprocessing and implementation details</li><li>Avoid treating one score as universal quality</li><li>Link evidence when possible</li></ul></div></div><p className="summary-note">This page is community-maintained and should be read alongside the original documentation.</p></section>

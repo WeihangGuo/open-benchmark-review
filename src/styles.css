@@ -107,8 +107,8 @@ main { min-height: calc(100vh - 190px); }
 .verified { color: #34734d; }
 .plain-link { border: 0; padding: 0; background: transparent; color: var(--link); font-size: 10px; }
 .detail-tabs { margin-left: calc((100vw - min(1100px, calc(100vw - 32px))) / -2); margin-right: calc((100vw - min(1100px, calc(100vw - 32px))) / -2); padding: 0 max(calc((100vw - 1100px) / 2), 16px); display: flex; gap: 24px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #eee; }
-.detail-tabs a { padding: 10px 0 8px; border-bottom: 2px solid transparent; color: #60676b; font-size: 11px; }
-.detail-tabs a.active { color: var(--red); border-color: var(--red); font-weight: 700; }
+.detail-tabs button { padding: 10px 0 8px; border: 0; border-bottom: 2px solid transparent; color: #60676b; background: transparent; font-size: 11px; }
+.detail-tabs button.active { color: var(--red); border-color: var(--red); font-weight: 700; }
 .detail-tabs span { padding: 1px 5px; border-radius: 8px; background: #d6d8d8; font-size: 9px; }
 .detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 28px; padding: 25px 0 55px; }
 .overview-panel { padding: 17px 19px; border: 1px solid var(--line); border-radius: 3px; background: #fff; }
@@ -292,7 +292,7 @@ main { min-height: calc(100vh - 190px); }
   .benchmark-meta { margin-top: 10px; padding: 10px 0 0; border-left: 0; border-top: 1px dashed var(--line); }
   .detail-copy h1, .admin-heading h1 { font-size: 26px; }
   .detail-tabs { overflow-x: auto; }
-  .detail-tabs a { white-space: nowrap; }
+  .detail-tabs button { white-space: nowrap; }
   .overview-columns { grid-template-columns: 1fr; }
   .overview-columns > div + div { padding-left: 0; border-left: 0; border-top: 1px solid var(--soft-line); }
   .side-column { display: grid; grid-template-columns: 1fr 1fr; }

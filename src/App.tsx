@@ -1,11 +1,23 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import {
+  authRedirectUrl,
+  backendConfigured,
+  githubAvatar,
+  githubName,
+  initials,
+  supabase,
+} from "./lib/supabase";
+
+type Category = "Video generation" | "Action understanding";
 
 type Benchmark = {
   id: string;
+  databaseId?: string;
   name: string;
   fullName: string;
   summary: string;
-  category: "Video generation" | "Action understanding";
+  category: Category;
   tags: string[];
   year: number;
   venue: string;
@@ -13,214 +25,198 @@ type Benchmark = {
   paper: string;
   comments: number;
   updated: string;
-  maintainer?: string;
 };
 
 type Comment = {
-  id: number;
+  id: string;
+  userId: string;
+  parentId?: string;
   author: string;
   initials: string;
+  avatar?: string;
   affiliation: string;
   tag: string;
   body: string;
   evidence?: string;
   version?: string;
   helpful: number;
+  voted: boolean;
   time: string;
-  reply?: boolean;
 };
 
 type PendingBenchmark = {
-  id: number;
+  id: string;
   name: string;
   url: string;
   submitter: string;
-  status: "Pending" | "Approved" | "Merged" | "Rejected";
-  possibleDuplicate?: string;
+  note?: string;
 };
 
-const benchmarks: Benchmark[] = [
+const fallbackBenchmarks: Benchmark[] = [
   {
     id: "vbench",
     name: "VBench",
     fullName: "Comprehensive Benchmark Suite for Video Generative Models",
-    summary:
-      "A multi-dimensional evaluation suite for text-to-video and image-to-video generation, with dedicated prompt sets and automatic metrics.",
+    summary: "A multi-dimensional evaluation suite for text-to-video and image-to-video generation, with dedicated prompt sets and automatic metrics.",
     category: "Video generation",
     tags: ["Text-to-video", "Image-to-video", "16 dimensions"],
     year: 2024,
     venue: "CVPR",
     repo: "https://github.com/Vchitect/VBench",
     paper: "https://openaccess.thecvf.com/content/CVPR2024/html/Huang_VBench_Comprehensive_Benchmark_Suite_for_Video_Generative_Models_CVPR_2024_paper.html",
-    comments: 24,
-    updated: "2 days ago",
-    maintainer: "Vchitect",
+    comments: 0,
+    updated: "Starter catalog",
   },
   {
     id: "evalcrafter",
     name: "EvalCrafter",
     fullName: "Benchmarking and Evaluating Large Video Generation Models",
-    summary:
-      "Evaluates visual quality, motion quality, temporal consistency and text-video alignment with objective metrics and user studies.",
+    summary: "Evaluates visual quality, motion quality, temporal consistency and text-video alignment with objective metrics and user studies.",
     category: "Video generation",
     tags: ["Text-to-video", "Human study", "Motion"],
     year: 2024,
     venue: "CVPR",
     repo: "https://github.com/EvalCrafter/EvalCrafter",
     paper: "https://evalcrafter.github.io/",
-    comments: 17,
-    updated: "1 week ago",
+    comments: 0,
+    updated: "Starter catalog",
   },
   {
     id: "t2v-compbench",
     name: "T2V-CompBench",
     fullName: "A Comprehensive Benchmark for Compositional Text-to-video Generation",
-    summary:
-      "Focuses on compositional generation, including attribute binding, spatial relationships, numeracy, motion binding and complex compositions.",
+    summary: "Focuses on compositional generation, including attribute binding, spatial relationships, numeracy, motion binding and complex compositions.",
     category: "Video generation",
     tags: ["Compositionality", "Text-to-video", "Fine-grained"],
     year: 2025,
     venue: "CVPR",
     repo: "https://github.com/KaiyueSun98/T2V-CompBench",
     paper: "https://arxiv.org/abs/2407.14505",
-    comments: 11,
-    updated: "3 weeks ago",
+    comments: 0,
+    updated: "Starter catalog",
   },
   {
     id: "kinetics-400",
     name: "Kinetics-400",
     fullName: "The Kinetics Human Action Video Dataset",
-    summary:
-      "A large-scale collection of human action clips sourced from YouTube, widely used for action recognition training and evaluation.",
+    summary: "A large-scale collection of human action clips sourced from YouTube, widely used for action recognition training and evaluation.",
     category: "Action understanding",
     tags: ["Action recognition", "YouTube", "400 classes"],
     year: 2017,
     venue: "CVPR",
     repo: "https://github.com/cvdfoundation/kinetics-dataset",
     paper: "https://arxiv.org/abs/1705.06950",
-    comments: 38,
-    updated: "Yesterday",
+    comments: 0,
+    updated: "Starter catalog",
   },
   {
     id: "ssv2",
     name: "Something-Something V2",
     fullName: "The Something-Something Video Database, Version 2",
-    summary:
-      "A crowd-acted dataset emphasizing temporal reasoning and human-object interactions with everyday objects.",
+    summary: "A crowd-acted dataset emphasizing temporal reasoning and human-object interactions with everyday objects.",
     category: "Action understanding",
     tags: ["Temporal reasoning", "Object interaction", "174 classes"],
     year: 2017,
     venue: "ICCV",
     repo: "https://huggingface.co/datasets/HuggingFaceM4/something_something_v2",
     paper: "https://arxiv.org/abs/1706.04261",
-    comments: 29,
-    updated: "4 days ago",
+    comments: 0,
+    updated: "Starter catalog",
   },
   {
     id: "ava",
     name: "AVA",
     fullName: "A Video Dataset of Spatio-temporally Localized Atomic Visual Actions",
-    summary:
-      "Provides person-centric, spatio-temporal action annotations in movie clips for localized human action understanding.",
+    summary: "Provides person-centric, spatio-temporal action annotations in movie clips for localized human action understanding.",
     category: "Action understanding",
     tags: ["Action localization", "Atomic actions", "Movies"],
     year: 2018,
     venue: "CVPR",
     repo: "https://research.google.com/ava/",
     paper: "https://arxiv.org/abs/1705.08421",
-    comments: 14,
-    updated: "2 weeks ago",
+    comments: 0,
+    updated: "Starter catalog",
   },
 ];
 
-const seededComments: Record<string, Comment[]> = {
-  vbench: [
-    {
-      id: 1,
-      author: "Maya Chen",
-      initials: "MC",
-      affiliation: "PhD student · Video generation",
-      tag: "Metric validity",
-      version: "VBench 0.1.2",
-      body:
-        "The per-dimension breakdown is much more informative than the aggregate score. In our experiments, models with visibly different motion failure modes can still end up close in the final average, so I would strongly recommend reporting the full vector of scores.",
-      evidence: "Experiment notes and model outputs available in the linked repository.",
-      helpful: 42,
-      time: "6 days ago",
-    },
-    {
-      id: 2,
-      author: "Arjun Rao",
-      initials: "AR",
-      affiliation: "Research engineer",
-      tag: "Reproducibility",
-      version: "VBench 0.1.2",
-      body:
-        "Reproduction was straightforward after pinning the evaluation model versions. The main source of variance for us was video preprocessing rather than the metric implementation itself. Please report frame rate, resizing behavior and the exact commit used.",
-      helpful: 31,
-      time: "2 weeks ago",
-    },
-    {
-      id: 3,
-      author: "Verified maintainer",
-      initials: "VM",
-      affiliation: "VBench project · identity verified",
-      tag: "Maintainer note",
-      body:
-        "Thank you for flagging the preprocessing ambiguity. We have expanded the documentation and welcome minimal reproduction cases through the project repository.",
-      helpful: 18,
-      time: "12 days ago",
-      reply: true,
-    },
-    {
-      id: 4,
-      author: "Elena Park",
-      initials: "EP",
-      affiliation: "Assistant professor",
-      tag: "Use case",
-      body:
-        "Useful for broad capability profiling, but I would not use the human-action dimension alone to support a strong claim about physical plausibility. Pair it with a targeted action or physics evaluation.",
-      helpful: 27,
-      time: "3 weeks ago",
-    },
-  ],
-};
+function relativeTime(value?: string) {
+  if (!value) return "No activity yet";
+  const elapsed = Date.now() - new Date(value).getTime();
+  const minutes = Math.max(1, Math.floor(elapsed / 60_000));
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(value).toLocaleDateString();
+}
 
-const initialPending: PendingBenchmark[] = [
-  {
-    id: 1,
-    name: "VBench++",
-    url: "https://github.com/Vchitect/VBench",
-    submitter: "alex-kim",
-    status: "Pending",
-    possibleDuplicate: "VBench",
-  },
-  {
-    id: 2,
-    name: "VideoPhy-2",
-    url: "https://github.com/Hritikbansal/videophy",
-    submitter: "rli-research",
-    status: "Pending",
-  },
-];
-
-function readStored<T>(key: string, fallback: T): T {
-  try {
-    const value = localStorage.getItem(key);
-    return value ? (JSON.parse(value) as T) : fallback;
-  } catch {
-    return fallback;
-  }
+function normalizeSource(value: string) {
+  return value.trim().toLowerCase().replace(/^https?:\/\/(www\.)?/, "").replace(/\/+$/, "");
 }
 
 function App() {
   const [hash, setHash] = useState(() => window.location.hash || "#home");
-  const [signedIn, setSignedIn] = useState(() => readStored("obr-signed-in", false));
+  const [benchmarks, setBenchmarks] = useState<Benchmark[]>(fallbackBenchmarks);
+  const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<"user" | "admin">("user");
+  const [authLoading, setAuthLoading] = useState(backendConfigured);
+  const [databaseReady, setDatabaseReady] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
   const [notice, setNotice] = useState("");
-  const [pending, setPending] = useState<PendingBenchmark[]>(() =>
-    readStored("obr-pending", initialPending),
-  );
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const showNotice = useCallback((message: string) => {
+    setNotice(message);
+    window.setTimeout(() => setNotice(""), 4200);
+  }, []);
+
+  const loadCatalog = useCallback(async () => {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from("benchmarks")
+      .select("id, slug, name, full_name, summary, category, tags, year, venue, updated_at, benchmark_sources(source_type, url)")
+      .eq("status", "published")
+      .order("name");
+
+    if (error) {
+      setDatabaseReady(false);
+      return;
+    }
+
+    const { data: commentRows } = await supabase
+      .from("comments")
+      .select("benchmark_id")
+      .eq("status", "published");
+    const counts = new Map<string, number>();
+    for (const row of commentRows ?? []) {
+      counts.set(row.benchmark_id, (counts.get(row.benchmark_id) ?? 0) + 1);
+    }
+
+    const mapped: Benchmark[] = (data ?? []).map((row) => {
+      const sources = (row.benchmark_sources ?? []) as Array<{ source_type: string; url: string }>;
+      const repo = sources.find((source) => ["github", "huggingface", "project_page"].includes(source.source_type))?.url ?? "";
+      const paper = sources.find((source) => source.source_type === "paper")?.url ?? repo;
+      return {
+        id: row.slug,
+        databaseId: row.id,
+        name: row.name,
+        fullName: row.full_name,
+        summary: row.summary,
+        category: row.category as Category,
+        tags: row.tags ?? [],
+        year: row.year ?? new Date().getFullYear(),
+        venue: row.venue || "",
+        repo,
+        paper,
+        comments: counts.get(row.id) ?? 0,
+        updated: relativeTime(row.updated_at),
+      };
+    });
+
+    setBenchmarks(mapped);
+    setDatabaseReady(true);
+  }, []);
 
   useEffect(() => {
     const onHashChange = () => {
@@ -232,22 +228,79 @@ function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("obr-signed-in", JSON.stringify(signedIn));
-  }, [signedIn]);
+    void loadCatalog();
+  }, [loadCatalog]);
 
   useEffect(() => {
-    localStorage.setItem("obr-pending", JSON.stringify(pending));
-  }, [pending]);
+    if (!supabase) {
+      setAuthLoading(false);
+      return;
+    }
+    void supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null);
+      setAuthLoading(false);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
-  const showNotice = (message: string) => {
-    setNotice(message);
-    window.setTimeout(() => setNotice(""), 3200);
-  };
+  useEffect(() => {
+    if (!supabase || !user) {
+      setRole("user");
+      setPendingCount(0);
+      return;
+    }
+    const client = supabase;
+    void client.from("profiles").select("role").eq("id", user.id).maybeSingle().then(({ data }) => {
+      const nextRole = data?.role === "admin" ? "admin" : "user";
+      setRole(nextRole);
+      if (nextRole === "admin") {
+        void client.from("benchmarks").select("id", { count: "exact", head: true }).eq("status", "pending").then(({ count }) => setPendingCount(count ?? 0));
+      }
+    });
+
+    const returnHash = localStorage.getItem("obr-return-hash");
+    if (returnHash) {
+      localStorage.removeItem("obr-return-hash");
+      window.location.hash = returnHash;
+    }
+    if (localStorage.getItem("obr-open-submit-after-auth") === "true") {
+      localStorage.removeItem("obr-open-submit-after-auth");
+      setSubmitOpen(true);
+    }
+  }, [user]);
+
+  const signIn = useCallback(async (returnHash = window.location.hash || "#home") => {
+    if (!supabase) {
+      showNotice("The shared backend is not configured yet.");
+      return;
+    }
+    localStorage.setItem("obr-return-hash", returnHash);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: { redirectTo: authRedirectUrl() },
+    });
+    if (error) showNotice(error.message);
+  }, [showNotice]);
+
+  const signOut = useCallback(async () => {
+    if (!supabase) return;
+    const { error } = await supabase.auth.signOut();
+    showNotice(error ? error.message : "Signed out.");
+  }, [showNotice]);
 
   const openSubmit = () => {
-    if (!signedIn) {
-      setSignedIn(true);
-      showNotice("Prototype sign-in complete. You can now submit a benchmark.");
+    if (!user) {
+      localStorage.setItem("obr-open-submit-after-auth", "true");
+      void signIn("#home");
+      return;
+    }
+    if (!databaseReady) {
+      showNotice("The database tables still need to be initialized in Supabase.");
+      return;
     }
     setSubmitOpen(true);
   };
@@ -258,29 +311,55 @@ function App() {
   return (
     <div className="app-shell">
       <Header
-        signedIn={signedIn}
-        setSignedIn={setSignedIn}
+        user={user}
+        role={role}
+        authLoading={authLoading}
+        pendingCount={pendingCount}
         openSubmit={openSubmit}
-        showNotice={showNotice}
+        signIn={signIn}
+        signOut={signOut}
       />
+      {!databaseReady && backendConfigured && (
+        <div className="setup-notice">Database setup is pending. The public starter catalog is shown until the Supabase schema is installed.</div>
+      )}
       <main>
         {hash === "#admin" ? (
-          <AdminView pending={pending} setPending={setPending} showNotice={showNotice} />
+          <AdminView user={user} role={role} signIn={signIn} showNotice={showNotice} onQueueChange={setPendingCount} />
         ) : selected ? (
-          <BenchmarkView benchmark={selected} signedIn={signedIn} setSignedIn={setSignedIn} />
+          <BenchmarkView
+            benchmark={selected}
+            user={user}
+            databaseReady={databaseReady}
+            signIn={signIn}
+            showNotice={showNotice}
+            refreshCatalog={loadCatalog}
+          />
         ) : (
-          <HomeView openSubmit={openSubmit} />
+          <HomeView benchmarks={benchmarks} openSubmit={openSubmit} />
         )}
       </main>
       <Footer />
       {submitOpen && (
         <SubmitDialog
-          pending={pending}
+          benchmarks={benchmarks}
+          pendingCount={role === "admin" ? pendingCount : undefined}
           onClose={() => setSubmitOpen(false)}
-          onSubmit={(submission) => {
-            setPending((current) => [...current, submission]);
+          onSubmit={async ({ name, url, category, note }) => {
+            if (!supabase) return false;
+            const { error } = await supabase.rpc("submit_benchmark", {
+              p_name: name,
+              p_source_url: url,
+              p_category: category,
+              p_note: note || null,
+            });
+            if (error) {
+              showNotice(error.message);
+              return false;
+            }
             setSubmitOpen(false);
-            showNotice("Submitted for a quick duplicate check and admin review.");
+            if (role === "admin") setPendingCount((count) => count + 1);
+            showNotice("Submitted for duplicate checking and admin review.");
+            return true;
           }}
         />
       )}
@@ -290,131 +369,89 @@ function App() {
 }
 
 function Header({
-  signedIn,
-  setSignedIn,
+  user,
+  role,
+  authLoading,
+  pendingCount,
   openSubmit,
-  showNotice,
+  signIn,
+  signOut,
 }: {
-  signedIn: boolean;
-  setSignedIn: (value: boolean) => void;
+  user: User | null;
+  role: "user" | "admin";
+  authLoading: boolean;
+  pendingCount: number;
   openSubmit: () => void;
-  showNotice: (message: string) => void;
+  signIn: (returnHash?: string) => Promise<void>;
+  signOut: () => Promise<void>;
 }) {
+  const name = githubName(user);
+  const avatar = githubAvatar(user);
   return (
     <>
       <header className="site-header">
         <div className="header-inner">
-          <a className="brand" href="#home" aria-label="Open Benchmark Review home">
-            <span className="brand-name">OpenBenchmarkReview</span>
-          </a>
+          <a className="brand" href="#home" aria-label="Open Benchmark Review home"><span className="brand-name">OpenBenchmarkReview</span></a>
           <label className="header-search">
             <input aria-label="Search all benchmarks" placeholder="Search benchmarks and comments…" onFocus={() => { if (window.location.hash !== "#home") window.location.hash = "#home"; }} />
             <span>⌕</span>
           </label>
           <nav className="nav-links" aria-label="Primary navigation">
             <button className="text-button" onClick={openSubmit}>Add benchmark</button>
-            <a href="#admin" className="admin-link">Admin <span>2</span></a>
-            <button
-              className={signedIn ? "profile-button" : "sign-in-button"}
-              onClick={() => {
-                setSignedIn(!signedIn);
-                showNotice(signedIn ? "Signed out of the prototype." : "Prototype GitHub sign-in complete.");
-              }}
-            >
-              {signedIn ? "Account" : "Login"}
-            </button>
+            {role === "admin" && <a href="#admin" className="admin-link">Admin {pendingCount > 0 && <span>{pendingCount}</span>}</a>}
+            {user ? (
+              <button className="profile-button account-button" onClick={() => void signOut()} title="Sign out">
+                {avatar ? <img src={avatar} alt="" /> : <span className="mini-avatar">{initials(name)}</span>}
+                <span>{name}</span>
+              </button>
+            ) : (
+              <button className="sign-in-button" disabled={authLoading} onClick={() => void signIn()}>{authLoading ? "Loading…" : "Login"}</button>
+            )}
           </nav>
         </div>
       </header>
       <div className="site-subnav">
         <div>
           <span>Open benchmarks. Open discussion. Better evidence.</span>
-          <nav><a href="#home">Benchmarks</a><a href="#about">About</a><a href="https://github.com" target="_blank" rel="noreferrer">Open source</a></nav>
+          <nav><a href="#home">Benchmarks</a><a href="#about">About</a><a href="https://github.com/WeihangGuo/open-benchmark-review" target="_blank" rel="noreferrer">Open source</a></nav>
         </div>
       </div>
     </>
   );
 }
 
-function HomeView({ openSubmit }: { openSubmit: () => void }) {
+function HomeView({ benchmarks, openSubmit }: { benchmarks: Benchmark[]; openSubmit: () => void }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All benchmarks");
-
+  const [promptVisible, setPromptVisible] = useState(true);
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return benchmarks.filter((benchmark) => {
       const matchesCategory = category === "All benchmarks" || benchmark.category === category;
-      const matchesQuery =
-        !normalized ||
-        [benchmark.name, benchmark.fullName, benchmark.summary, ...benchmark.tags]
-          .join(" ")
-          .toLowerCase()
-          .includes(normalized);
+      const matchesQuery = !normalized || [benchmark.name, benchmark.fullName, benchmark.summary, ...benchmark.tags].join(" ").toLowerCase().includes(normalized);
       return matchesCategory && matchesQuery;
     });
-  }, [category, query]);
+  }, [benchmarks, category, query]);
+  const commentCount = benchmarks.reduce((sum, benchmark) => sum + benchmark.comments, 0);
 
   return (
     <div className="content-page">
-      <section className="page-intro">
-        <div>
-          <h1>Benchmarks</h1>
-          <p>Community discussion and practical context for machine-learning evaluation.</p>
-        </div>
-        <button className="primary-button" onClick={openSubmit}>Add a benchmark</button>
-      </section>
-
-      <aside className="community-prompt">
-        <button aria-label="Dismiss">×</button>
-        <strong>What do you wish you had known before using this benchmark?</strong>
-        <span>Share a specific experience, version, limitation, or piece of evidence. Comments are public and community-moderated.</span>
-      </aside>
-
+      <section className="page-intro"><div><h1>Benchmarks</h1><p>Community discussion and practical context for machine-learning evaluation.</p></div><button className="primary-button" onClick={openSubmit}>Add a benchmark</button></section>
+      {promptVisible && <aside className="community-prompt"><button aria-label="Dismiss" onClick={() => setPromptVisible(false)}>×</button><strong>What do you wish you had known before using this benchmark?</strong><span>Share a specific experience, version, limitation, or piece of evidence. Comments are public and community-moderated.</span></aside>}
       <section className="browse-section" id="browse">
-        <div className="section-heading">
-          <div>
-            <h2>All benchmarks</h2>
-          </div>
-          <p>{filtered.length} results · 146 comments</p>
-        </div>
+        <div className="section-heading"><div><h2>All benchmarks</h2></div><p>{filtered.length} results · {commentCount} comments</p></div>
         <div className="search-row">
-          <label className="search-box">
-            <span aria-hidden="true">⌕</span>
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by benchmark, task, or capability…"
-              aria-label="Search benchmarks"
-            />
-          </label>
+          <label className="search-box"><span aria-hidden="true">⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by benchmark, task, or capability…" aria-label="Search benchmarks" /></label>
           <div className="filter-tabs" role="group" aria-label="Filter by category">
-            {["All benchmarks", "Video generation", "Action understanding"].map((item) => (
-              <button
-                key={item}
-                className={category === item ? "active" : ""}
-                onClick={() => setCategory(item)}
-              >
-                {item}
-              </button>
-            ))}
+            {["All benchmarks", "Video generation", "Action understanding"].map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{item}</button>)}
           </div>
         </div>
         <div className="benchmark-list">
           {filtered.map((benchmark) => <BenchmarkCard key={benchmark.id} benchmark={benchmark} />)}
-          {filtered.length === 0 && (
-            <div className="empty-state">
-              <h3>No matching benchmark yet</h3>
-              <p>Try a broader search, or help the community by adding it.</p>
-              <button className="primary-button" onClick={openSubmit}>Add a benchmark</button>
-            </div>
-          )}
+          {filtered.length === 0 && <div className="empty-state"><h3>No matching benchmark yet</h3><p>Try a broader search, or help the community by adding it.</p><button className="primary-button" onClick={openSubmit}>Add a benchmark</button></div>}
         </div>
       </section>
-
-      <section className="about-strip" id="about">
-        <strong>About Open Benchmark Review</strong>
-        <p>This prototype keeps one canonical page per benchmark. Anyone can comment; administrators only resolve duplicate pages and moderate abuse. There are no reviewer or area-chair roles.</p>
-      </section>
+      <section className="about-strip" id="about"><strong>About Open Benchmark Review</strong><p>One canonical page per benchmark. Anyone with a GitHub account can submit and comment; administrators only resolve duplicate pages and moderate abuse. There are no reviewer or area-chair roles.</p></section>
     </div>
   );
 }
@@ -423,239 +460,283 @@ function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
   return (
     <article className="benchmark-card">
       <div className="benchmark-main">
-        <div className="benchmark-title-row">
-          <div className="benchmark-heading">
-            <div className="benchmark-name-line">
-              <a href={`#benchmark/${benchmark.id}`}><h3>{benchmark.name}</h3></a>
-              <span className={`category-badge ${benchmark.category === "Video generation" ? "generation" : "action"}`}>
-                {benchmark.category}
-              </span>
-            </div>
-            <p className="full-name">{benchmark.fullName}</p>
-          </div>
-        </div>
-        <p className="benchmark-summary">{benchmark.summary}</p>
-        <div className="tag-row">
-          {benchmark.tags.map((tag) => <span key={tag}>{tag}</span>)}
-        </div>
+        <div className="benchmark-title-row"><div className="benchmark-heading"><div className="benchmark-name-line"><a href={`#benchmark/${benchmark.id}`}><h3>{benchmark.name}</h3></a><span className={`category-badge ${benchmark.category === "Video generation" ? "generation" : "action"}`}>{benchmark.category}</span></div><p className="full-name">{benchmark.fullName}</p></div></div>
+        <p className="benchmark-summary">{benchmark.summary}</p><div className="tag-row">{benchmark.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
       </div>
       <div className="benchmark-meta">
-        <div><span>Introduced</span><strong>{benchmark.venue} {benchmark.year}</strong></div>
-        <div><span>Discussion</span><strong>{benchmark.comments} comments</strong></div>
-        <div><span>Last activity</span><strong>{benchmark.updated}</strong></div>
-        <a className="view-link" href={`#benchmark/${benchmark.id}`}>View discussion <span>→</span></a>
+        <div><span>Introduced</span><strong>{benchmark.venue} {benchmark.year}</strong></div><div><span>Discussion</span><strong>{benchmark.comments} comments</strong></div><div><span>Last activity</span><strong>{benchmark.updated}</strong></div><a className="view-link" href={`#benchmark/${benchmark.id}`}>View discussion <span>→</span></a>
       </div>
     </article>
   );
 }
 
-function BenchmarkView({
-  benchmark,
-  signedIn,
-  setSignedIn,
-}: {
+function BenchmarkView({ benchmark, user, databaseReady, signIn, showNotice, refreshCatalog }: {
   benchmark: Benchmark;
-  signedIn: boolean;
-  setSignedIn: (value: boolean) => void;
+  user: User | null;
+  databaseReady: boolean;
+  signIn: (returnHash?: string) => Promise<void>;
+  showNotice: (message: string) => void;
+  refreshCatalog: () => Promise<void>;
 }) {
-  const [comments, setComments] = useState<Comment[]>(() =>
-    readStored(`obr-comments-${benchmark.id}`, seededComments[benchmark.id] || []),
-  );
-  const [tag, setTag] = useState("All comments");
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [filterTag, setFilterTag] = useState("All comments");
+  const [commentTag, setCommentTag] = useState("General");
   const [commentText, setCommentText] = useState("");
+  const [replyTo, setReplyTo] = useState<Comment | null>(null);
+  const [posting, setPosting] = useState(false);
 
-  useEffect(() => {
-    localStorage.setItem(`obr-comments-${benchmark.id}`, JSON.stringify(comments));
-  }, [benchmark.id, comments]);
-
-  const visibleComments = tag === "All comments" ? comments : comments.filter((comment) => comment.tag === tag);
-
-  const submitComment = (event: FormEvent) => {
-    event.preventDefault();
-    if (!signedIn) {
-      setSignedIn(true);
+  const loadComments = useCallback(async () => {
+    if (!supabase || !benchmark.databaseId || !databaseReady) {
+      setComments([]);
       return;
     }
-    if (!commentText.trim()) return;
-    setComments((current) => [
-      {
-        id: Date.now(),
-        author: "Weihang Guo",
-        initials: "WG",
-        affiliation: "Community member",
-        tag: "General",
-        body: commentText.trim(),
-        helpful: 0,
-        time: "Just now",
-      },
-      ...current,
+    const { data: rows, error } = await supabase.from("comments").select("id, user_id, parent_id, content, tag, benchmark_version, evidence_url, created_at").eq("benchmark_id", benchmark.databaseId).eq("status", "published").order("created_at", { ascending: true });
+    if (error) {
+      showNotice(error.message);
+      return;
+    }
+    const userIds = [...new Set((rows ?? []).map((row) => row.user_id))];
+    const commentIds = (rows ?? []).map((row) => row.id);
+    const [{ data: profiles }, { data: votes }] = await Promise.all([
+      userIds.length ? supabase.from("profiles").select("id, username, avatar_url").in("id", userIds) : Promise.resolve({ data: [] }),
+      commentIds.length ? supabase.from("comment_votes").select("comment_id, user_id").in("comment_id", commentIds) : Promise.resolve({ data: [] }),
     ]);
+    const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+    const voteCount = new Map<string, number>();
+    const myVotes = new Set<string>();
+    for (const vote of votes ?? []) {
+      voteCount.set(vote.comment_id, (voteCount.get(vote.comment_id) ?? 0) + 1);
+      if (vote.user_id === user?.id) myVotes.add(vote.comment_id);
+    }
+    setComments((rows ?? []).map((row) => {
+      const profile = profileMap.get(row.user_id);
+      const name = profile?.username || "Community member";
+      return {
+        id: row.id,
+        userId: row.user_id,
+        parentId: row.parent_id || undefined,
+        author: name,
+        initials: initials(name),
+        avatar: profile?.avatar_url || undefined,
+        affiliation: "GitHub community member",
+        tag: row.tag,
+        body: row.content,
+        evidence: row.evidence_url || undefined,
+        version: row.benchmark_version || undefined,
+        helpful: voteCount.get(row.id) ?? 0,
+        voted: myVotes.has(row.id),
+        time: relativeTime(row.created_at),
+      };
+    }));
+  }, [benchmark.databaseId, databaseReady, showNotice, user?.id]);
+
+  useEffect(() => { void loadComments(); }, [loadComments]);
+  const visibleComments = filterTag === "All comments" ? comments : comments.filter((comment) => comment.tag === filterTag);
+
+  const submitComment = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!user) {
+      void signIn(`#benchmark/${benchmark.id}`);
+      return;
+    }
+    if (!supabase || !databaseReady || !benchmark.databaseId || commentText.trim().length < 2) return;
+    setPosting(true);
+    const { error } = await supabase.from("comments").insert({ benchmark_id: benchmark.databaseId, user_id: user.id, parent_id: replyTo?.id ?? null, content: commentText.trim(), tag: commentTag });
+    setPosting(false);
+    if (error) {
+      showNotice(error.message);
+      return;
+    }
     setCommentText("");
+    setReplyTo(null);
+    await Promise.all([loadComments(), refreshCatalog()]);
+    showNotice("Comment posted.");
+  };
+
+  const toggleHelpful = async (comment: Comment) => {
+    if (!user) {
+      void signIn(`#benchmark/${benchmark.id}`);
+      return;
+    }
+    if (!supabase) return;
+    const request = comment.voted
+      ? supabase.from("comment_votes").delete().eq("comment_id", comment.id).eq("user_id", user.id)
+      : supabase.from("comment_votes").insert({ comment_id: comment.id, user_id: user.id });
+    const { error } = await request;
+    if (error) showNotice(error.message); else void loadComments();
+  };
+
+  const editComment = async (comment: Comment) => {
+    if (!supabase) return;
+    const next = window.prompt("Edit your comment", comment.body)?.trim();
+    if (!next || next === comment.body) return;
+    const { error } = await supabase.from("comments").update({ content: next }).eq("id", comment.id);
+    if (error) showNotice(error.message); else void loadComments();
+  };
+
+  const deleteComment = async (comment: Comment) => {
+    if (!supabase || !window.confirm("Delete this comment?")) return;
+    const { error } = await supabase.from("comments").delete().eq("id", comment.id);
+    if (error) showNotice(error.message); else await Promise.all([loadComments(), refreshCatalog()]);
+  };
+
+  const reportComment = async (comment: Comment) => {
+    if (!user) {
+      void signIn(`#benchmark/${benchmark.id}`);
+      return;
+    }
+    if (!supabase) return;
+    const reason = window.prompt("Why are you reporting this comment?")?.trim();
+    if (!reason) return;
+    const { error } = await supabase.from("reports").insert({ reporter_id: user.id, benchmark_id: benchmark.databaseId, comment_id: comment.id, reason });
+    showNotice(error ? error.message : "Report submitted for moderation.");
   };
 
   return (
     <div className="detail-page">
       <div className="breadcrumbs"><a href="#home">Benchmarks</a><span>/</span><span>{benchmark.name}</span></div>
       <section className="detail-hero">
-        <div className="detail-copy">
-          <div className="detail-label-row">
-            <span className={`category-badge ${benchmark.category === "Video generation" ? "generation" : "action"}`}>{benchmark.category}</span>
-            <span className="status-dot"><i /> Actively discussed</span>
-          </div>
-          <h1>{benchmark.name}</h1>
-          <p className="detail-full-name">{benchmark.fullName}</p>
-          <p className="detail-summary">{benchmark.summary}</p>
-          <div className="source-links">
-            <a href={benchmark.paper} target="_blank" rel="noreferrer">Paper ↗</a>
-            <a href={benchmark.repo} target="_blank" rel="noreferrer">Official source ↗</a>
-          </div>
-        </div>
-        <aside className="fact-card">
-          <h2>Benchmark facts</h2>
-          <dl>
-            <div><dt>Introduced</dt><dd>{benchmark.venue} {benchmark.year}</dd></div>
-            <div><dt>Primary task</dt><dd>{benchmark.category}</dd></div>
-            <div><dt>Source status</dt><dd><span className="verified">✓ Verified</span></dd></div>
-            <div><dt>Comments</dt><dd>{comments.length || benchmark.comments}</dd></div>
-          </dl>
-          <button className="plain-link" onClick={() => document.getElementById("comment-form")?.scrollIntoView({ behavior: "smooth" })}>Join the discussion →</button>
-        </aside>
+        <div className="detail-copy"><div className="detail-label-row"><span className={`category-badge ${benchmark.category === "Video generation" ? "generation" : "action"}`}>{benchmark.category}</span><span className="status-dot"><i /> Open discussion</span></div><h1>{benchmark.name}</h1><p className="detail-full-name">{benchmark.fullName}</p><p className="detail-summary">{benchmark.summary}</p><div className="source-links">{benchmark.paper && <a href={benchmark.paper} target="_blank" rel="noreferrer">Paper ↗</a>}{benchmark.repo && <a href={benchmark.repo} target="_blank" rel="noreferrer">Official source ↗</a>}</div></div>
+        <aside className="fact-card"><h2>Benchmark facts</h2><dl><div><dt>Introduced</dt><dd>{benchmark.venue} {benchmark.year}</dd></div><div><dt>Primary task</dt><dd>{benchmark.category}</dd></div><div><dt>Source status</dt><dd><span className="verified">✓ Indexed</span></dd></div><div><dt>Comments</dt><dd>{comments.length}</dd></div></dl><button className="plain-link" onClick={() => document.getElementById("comment-form")?.scrollIntoView({ behavior: "smooth" })}>Join the discussion →</button></aside>
       </section>
-
-      <nav className="detail-tabs" aria-label="Benchmark sections">
-        <a href="#overview" className="active">Overview</a>
-        <a href="#discussion">Comments <span>{comments.length || benchmark.comments}</span></a>
-        <a href="#versions">Versions</a>
-        <a href="#sources">Sources</a>
-      </nav>
-
+      <nav className="detail-tabs" aria-label="Benchmark sections"><a href="#overview" className="active">Overview</a><a href="#discussion">Comments <span>{comments.length}</span></a><a href="#sources">Sources</a></nav>
       <div className="detail-layout">
         <div className="detail-content">
-          <section className="overview-panel" id="overview">
-            <p className="eyebrow">Community overview</p>
-            <h2>What this benchmark is useful for</h2>
-            <p>Community members most often use {benchmark.name} for broad, comparable evaluation within <strong>{benchmark.category.toLowerCase()}</strong>. Its structured setup makes it easier to locate model strengths and failure modes than relying on one aggregate metric.</p>
-            <div className="overview-columns">
-              <div><h3>Common uses</h3><ul><li>Comparing model capabilities under a shared protocol</li><li>Reporting task-specific performance</li><li>Finding qualitative failure cases</li></ul></div>
-              <div className="caution"><h3>Before you use it</h3><ul><li>Report the exact version and preprocessing</li><li>Avoid treating one score as universal quality</li><li>Pair broad evaluation with targeted tests</li></ul></div>
-            </div>
-            <p className="summary-note">This summary is community-maintained and should be read alongside the comments and original documentation.</p>
-          </section>
-
+          <section className="overview-panel" id="overview"><p className="eyebrow">Community overview</p><h2>What this benchmark is useful for</h2><p>Community members can use {benchmark.name} to discuss practical experience in <strong>{benchmark.category.toLowerCase()}</strong>, including failure modes, reproducibility, and metric validity.</p><div className="overview-columns"><div><h3>Useful comment topics</h3><ul><li>Exact benchmark version and settings</li><li>Reproduction experience</li><li>Known limitations and failure cases</li></ul></div><div className="caution"><h3>Before making claims</h3><ul><li>Report preprocessing and implementation details</li><li>Avoid treating one score as universal quality</li><li>Link evidence when possible</li></ul></div></div><p className="summary-note">This page is community-maintained and should be read alongside the original documentation.</p></section>
           <section className="discussion-section" id="discussion">
-            <div className="discussion-heading">
-              <div><p className="eyebrow">Open discussion</p><h2>Community comments</h2></div>
-              <select value={tag} onChange={(event) => setTag(event.target.value)} aria-label="Filter comments">
-                <option>All comments</option>
-                <option>Metric validity</option>
-                <option>Reproducibility</option>
-                <option>Use case</option>
-                <option>General</option>
-              </select>
-            </div>
+            <div className="discussion-heading"><div><p className="eyebrow">Open discussion</p><h2>Community comments</h2></div><select value={filterTag} onChange={(event) => setFilterTag(event.target.value)} aria-label="Filter comments">{["All comments", "Metric validity", "Reproducibility", "Use case", "Data quality", "General"].map((item) => <option key={item}>{item}</option>)}</select></div>
             <form className="comment-composer" id="comment-form" onSubmit={submitComment}>
-              <div className="composer-top">
-                <span className="avatar">{signedIn ? "WG" : "?"}</span>
-                <div><strong>{signedIn ? "Add to the discussion" : "Sign in to comment"}</strong><span>Share what you observed and the context needed to interpret it.</span></div>
-              </div>
-              {signedIn && <textarea value={commentText} onChange={(event) => setCommentText(event.target.value)} placeholder="What do you wish you had known before using this benchmark?" rows={4} />}
-              <div className="composer-footer">
-                <span>Be specific, constructive, and link evidence when possible.</span>
-                <button className="primary-button" type="submit">{signedIn ? "Post comment" : "Sign in with GitHub"}</button>
-              </div>
+              <div className="composer-top"><span className="avatar">{user ? initials(githubName(user)) : "?"}</span><div><strong>{user ? "Add to the discussion" : "Sign in to comment"}</strong><span>Share what you observed and the context needed to interpret it.</span></div></div>
+              {user && databaseReady && <><div className="composer-options"><label>Topic <select value={commentTag} onChange={(event) => setCommentTag(event.target.value)}>{["General", "Metric validity", "Reproducibility", "Use case", "Data quality"].map((item) => <option key={item}>{item}</option>)}</select></label>{replyTo && <div className="reply-target">Replying to @{replyTo.author}<button type="button" onClick={() => setReplyTo(null)}>×</button></div>}</div><textarea value={commentText} onChange={(event) => setCommentText(event.target.value)} placeholder="What do you wish you had known before using this benchmark?" rows={4} minLength={2} required /></>}
+              <div className="composer-footer"><span>Be specific, constructive, and link evidence when possible.</span><button className="primary-button" type="submit" disabled={posting}>{user ? (databaseReady ? (posting ? "Posting…" : "Post comment") : "Database pending") : "Sign in with GitHub"}</button></div>
             </form>
             <div className="comments-list">
-              {visibleComments.map((comment) => (
-                <CommentCard key={comment.id} comment={comment} onHelpful={() => setComments((current) => current.map((item) => item.id === comment.id ? { ...item, helpful: item.helpful + 1 } : item))} />
-              ))}
+              {visibleComments.map((comment) => <CommentCard key={comment.id} comment={comment} own={comment.userId === user?.id} onHelpful={() => void toggleHelpful(comment)} onReply={() => { setReplyTo(comment); document.getElementById("comment-form")?.scrollIntoView({ behavior: "smooth" }); }} onEdit={() => void editComment(comment)} onDelete={() => void deleteComment(comment)} onReport={() => void reportComment(comment)} onShare={() => { void navigator.clipboard?.writeText(window.location.href); showNotice("Page link copied."); }} />)}
               {visibleComments.length === 0 && <div className="empty-comments">No comments in this category yet. Start the discussion.</div>}
             </div>
           </section>
         </div>
-        <aside className="side-column">
-          <div className="side-card"><h3>Topics</h3><div className="topic-list">{benchmark.tags.map((item) => <span key={item}>{item}</span>)}</div></div>
-          <div className="side-card"><h3>Page history</h3><p>Created from the official source.</p><p>Last community edit {benchmark.updated}.</p><button className="plain-link">View edit history →</button></div>
-          <div className="side-card compact"><h3>See something wrong?</h3><p>Suggest a correction or report duplicate information.</p><button className="plain-link">Suggest an edit →</button></div>
-        </aside>
+        <aside className="side-column"><div className="side-card"><h3>Topics</h3><div className="topic-list">{benchmark.tags.map((item) => <span key={item}>{item}</span>)}</div></div><div className="side-card"><h3>Page history</h3><p>Created from the official source.</p><p>Last activity {benchmark.updated}.</p></div><div className="side-card compact"><h3>See something wrong?</h3><p>Use the comment thread to suggest a correction, or report abusive content.</p></div></aside>
       </div>
     </div>
   );
 }
 
-function CommentCard({ comment, onHelpful }: { comment: Comment; onHelpful: () => void }) {
+function CommentCard({ comment, own, onHelpful, onReply, onEdit, onDelete, onReport, onShare }: { comment: Comment; own: boolean; onHelpful: () => void; onReply: () => void; onEdit: () => void; onDelete: () => void; onReport: () => void; onShare: () => void }) {
   return (
-    <article className={`comment-card ${comment.reply ? "reply" : ""}`}>
-      <div className="comment-author"><span className="avatar">{comment.initials}</span><div><strong>{comment.author}</strong><span>{comment.affiliation}</span></div><time>{comment.time}</time></div>
-      <div className="comment-tags"><span>{comment.tag}</span>{comment.version && <span className="version">Used {comment.version}</span>}</div>
-      <p>{comment.body}</p>
-      {comment.evidence && <div className="evidence"><strong>Evidence note</strong><span>{comment.evidence}</span></div>}
-      <div className="comment-actions"><button onClick={onHelpful}>↑ Helpful <span>{comment.helpful}</span></button><button>Reply</button><button>Share</button><button className="report">Report</button></div>
+    <article className={`comment-card ${comment.parentId ? "reply" : ""}`}>
+      <div className="comment-author">{comment.avatar ? <img className="avatar avatar-image" src={comment.avatar} alt="" /> : <span className="avatar">{comment.initials}</span>}<div><strong>{comment.author}</strong><span>{comment.affiliation}</span></div><time>{comment.time}</time></div>
+      <div className="comment-tags"><span>{comment.tag}</span>{comment.version && <span className="version">Used {comment.version}</span>}</div><p>{comment.body}</p>{comment.evidence && <div className="evidence"><strong>Evidence</strong><a href={comment.evidence} target="_blank" rel="noreferrer">{comment.evidence}</a></div>}
+      <div className="comment-actions"><button className={comment.voted ? "voted" : ""} onClick={onHelpful}>↑ Helpful <span>{comment.helpful}</span></button><button onClick={onReply}>Reply</button>{own && <><button onClick={onEdit}>Edit</button><button onClick={onDelete}>Delete</button></>}<button onClick={onShare}>Share</button>{!own && <button className="report" onClick={onReport}>Report</button>}</div>
     </article>
   );
 }
 
-function SubmitDialog({
-  pending,
-  onClose,
-  onSubmit,
-}: {
-  pending: PendingBenchmark[];
-  onClose: () => void;
-  onSubmit: (submission: PendingBenchmark) => void;
-}) {
+function SubmitDialog({ benchmarks, pendingCount, onClose, onSubmit }: { benchmarks: Benchmark[]; pendingCount?: number; onClose: () => void; onSubmit: (submission: { name: string; url: string; category: Category; note: string }) => Promise<boolean> }) {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
-  const normalized = url.toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
-  const duplicate = benchmarks.find((benchmark) => benchmark.repo.toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "") === normalized) ||
-    benchmarks.find((benchmark) => name.length > 2 && benchmark.name.toLowerCase() === name.trim().toLowerCase());
+  const [category, setCategory] = useState<Category>("Video generation");
+  const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const normalized = normalizeSource(url);
+  const repoDuplicate = benchmarks.find((benchmark) => normalized && normalizeSource(benchmark.repo) === normalized);
+  const nameDuplicate = benchmarks.find((benchmark) => name.trim().length > 2 && benchmark.name.toLowerCase() === name.trim().toLowerCase());
+  const duplicate = repoDuplicate || nameDuplicate;
+  const supportedSource = /^https?:\/\/(www\.)?(github\.com|huggingface\.co)\//i.test(url.trim());
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!name.trim() || !url.trim()) return;
-    onSubmit({ id: Date.now(), name: name.trim(), url: url.trim(), submitter: "community-user", status: "Pending", possibleDuplicate: duplicate?.name });
+    if (!name.trim() || !url.trim() || !supportedSource || repoDuplicate) return;
+    setSubmitting(true);
+    await onSubmit({ name: name.trim(), url: url.trim(), category, note: note.trim() });
+    setSubmitting(false);
   };
 
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="submit-title">
-        <div className="modal-header"><div><p className="eyebrow">Community submission</p><h2 id="submit-title">Add a benchmark</h2></div><button onClick={onClose} aria-label="Close">×</button></div>
-        <p>Submit the benchmark’s canonical source. An admin will do a quick duplicate check before the page becomes public.</p>
+        <div className="modal-header"><div><p className="eyebrow">Community submission</p><h2 id="submit-title">Add a benchmark</h2></div><button onClick={onClose} aria-label="Close">×</button></div><p>Submit the benchmark’s canonical source. An admin will do a quick duplicate check before the page becomes public.</p>
         <form onSubmit={submit}>
-          <label><span>Benchmark name</span><input value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. VBench" required /></label>
+          <label><span>Benchmark name</span><input value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. VBench" required minLength={2} maxLength={160} /></label>
+          <label><span>Category</span><select value={category} onChange={(event) => setCategory(event.target.value as Category)}><option>Video generation</option><option>Action understanding</option></select></label>
           <label><span>GitHub or Hugging Face repository</span><input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://github.com/organization/repository" type="url" required /></label>
-          {duplicate && <div className="duplicate-warning"><strong>Possible duplicate found</strong><span>{duplicate.name} already uses this name or repository. You can still submit if this is a distinct benchmark or version.</span><a href={`#benchmark/${duplicate.id}`} onClick={onClose}>View existing page →</a></div>}
-          {!duplicate && url.length > 8 && <div className="clear-check">✓ No exact repository match found</div>}
-          <label><span>Note for the admin <em>Optional</em></span><textarea rows={3} placeholder="Why is this a distinct benchmark? Anything the admin should know?" /></label>
-          <div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button type="submit" className="primary-button">Submit for review</button></div>
+          {url && !supportedSource && <div className="duplicate-warning"><strong>Unsupported source</strong><span>Please provide a github.com or huggingface.co repository URL.</span></div>}
+          {duplicate && <div className="duplicate-warning"><strong>{repoDuplicate ? "This source is already indexed" : "Possible duplicate name"}</strong><span>{duplicate.name} already uses this {repoDuplicate ? "repository" : "name"}. Review the existing page before submitting.</span><a href={`#benchmark/${duplicate.id}`} onClick={onClose}>View existing page →</a></div>}
+          {!duplicate && supportedSource && <div className="clear-check">✓ No exact repository match found</div>}
+          <label><span>Note for the admin <em>Optional</em></span><textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="Why is this a distinct benchmark? Anything the admin should know?" /></label>
+          <div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button type="submit" className="primary-button" disabled={submitting || !supportedSource || Boolean(repoDuplicate)}>{submitting ? "Submitting…" : "Submit for review"}</button></div>
         </form>
-        <p className="modal-footnote">There are currently {pending.filter((item) => item.status === "Pending").length} submissions awaiting review.</p>
+        <p className="modal-footnote">{pendingCount === undefined ? "Submissions are checked before publication." : `${pendingCount} submission${pendingCount === 1 ? "" : "s"} awaiting review.`}</p>
       </div>
     </div>
   );
 }
 
-function AdminView({ pending, setPending, showNotice }: { pending: PendingBenchmark[]; setPending: (items: PendingBenchmark[]) => void; showNotice: (message: string) => void }) {
-  const update = (id: number, status: PendingBenchmark["status"]) => {
-    setPending(pending.map((item) => item.id === id ? { ...item, status } : item));
-    showNotice(`Submission marked ${status.toLowerCase()}.`);
+function AdminView({ user, role, signIn, showNotice, onQueueChange }: { user: User | null; role: "user" | "admin"; signIn: (returnHash?: string) => Promise<void>; showNotice: (message: string) => void; onQueueChange: (count: number) => void }) {
+  const [pending, setPending] = useState<PendingBenchmark[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const loadPending = useCallback(async () => {
+    if (!supabase || role !== "admin") return;
+    setLoading(true);
+    const { data: rows, error } = await supabase.from("benchmarks").select("id, name, submission_note, submitted_by, created_at").eq("status", "pending").order("created_at");
+    if (error) {
+      showNotice(error.message);
+      setLoading(false);
+      return;
+    }
+    const ids = (rows ?? []).map((row) => row.id);
+    const submitterIds = [...new Set((rows ?? []).map((row) => row.submitted_by).filter(Boolean))];
+    const [{ data: sources }, { data: profiles }] = await Promise.all([
+      ids.length ? supabase.from("benchmark_sources").select("benchmark_id, url").in("benchmark_id", ids) : Promise.resolve({ data: [] }),
+      submitterIds.length ? supabase.from("profiles").select("id, username").in("id", submitterIds) : Promise.resolve({ data: [] }),
+    ]);
+    const sourceMap = new Map((sources ?? []).map((source) => [source.benchmark_id, source.url]));
+    const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile.username]));
+    const next = (rows ?? []).map((row) => ({ id: row.id, name: row.name, url: sourceMap.get(row.id) ?? "", submitter: profileMap.get(row.submitted_by) ?? "unknown", note: row.submission_note || undefined }));
+    setPending(next);
+    onQueueChange(next.length);
+    setLoading(false);
+  }, [onQueueChange, role, showNotice]);
+
+  useEffect(() => { void loadPending(); }, [loadPending]);
+
+  const update = async (item: PendingBenchmark, action: "published" | "rejected" | "merged") => {
+    if (!supabase || !user) return;
+    const updateValues: Record<string, string | null> = { status: action };
+    if (action === "published") updateValues.published_at = new Date().toISOString();
+    if (action === "merged") {
+      const slug = window.prompt("Canonical benchmark slug to merge into (for example: vbench)")?.trim();
+      if (!slug) return;
+      const { data: target, error: targetError } = await supabase.from("benchmarks").select("id").eq("slug", slug).eq("status", "published").maybeSingle();
+      if (targetError || !target) {
+        showNotice(targetError?.message || "Published benchmark not found.");
+        return;
+      }
+      updateValues.merged_into = target.id;
+    }
+    const { error } = await supabase.from("benchmarks").update(updateValues).eq("id", item.id);
+    if (error) {
+      showNotice(error.message);
+      return;
+    }
+    await supabase.from("moderation_actions").insert({ admin_id: user.id, action, target_type: "benchmark", target_id: item.id });
+    showNotice(`Submission marked ${action}.`);
+    void loadPending();
   };
-  const active = pending.filter((item) => item.status === "Pending");
+
+  if (!user) return <div className="admin-page access-panel"><h1>Admin</h1><p>Sign in with the administrator GitHub account to review submissions.</p><button className="primary-button" onClick={() => void signIn("#admin")}>Sign in with GitHub</button></div>;
+  if (role !== "admin") return <div className="admin-page access-panel"><h1>Admin</h1><p>Your account does not have administrator access.</p><a href="#home" className="view-link">Return to benchmarks →</a></div>;
 
   return (
     <div className="admin-page">
       <div className="breadcrumbs"><a href="#home">Open Benchmark Review</a><span>/</span><span>Admin</span></div>
-      <section className="admin-heading"><div><p className="eyebrow">Prototype moderation</p><h1>Benchmark submissions</h1><p>Keep one canonical page per benchmark. Check the official source, resolve duplicates and publish legitimate entries.</p></div><div className="queue-count"><strong>{active.length}</strong><span>awaiting review</span></div></section>
-      <div className="admin-tabs"><button className="active">Pending <span>{active.length}</span></button><button>History</button><button>Reported comments</button></div>
+      <section className="admin-heading"><div><p className="eyebrow">Moderation</p><h1>Benchmark submissions</h1><p>Keep one canonical page per benchmark. Check the official source, resolve duplicates and publish legitimate entries.</p></div><div className="queue-count"><strong>{pending.length}</strong><span>awaiting review</span></div></section>
+      <div className="admin-tabs"><button className="active">Pending <span>{pending.length}</span></button></div>
       <div className="admin-layout">
         <section className="queue-list">
-          {active.map((item) => (
-            <article className="queue-card" key={item.id}>
-              <div className="queue-top"><div><span className="pending-label">Pending</span><h2>{item.name}</h2><a href={item.url} target="_blank" rel="noreferrer">{item.url} ↗</a></div><div className="submitted-by"><span>Submitted by</span><strong>@{item.submitter}</strong></div></div>
-              {item.possibleDuplicate ? <div className="duplicate-panel"><div className="duplicate-icon">!</div><div><strong>Possible duplicate detected</strong><p>This source may already be represented by <a href="#benchmark/vbench">{item.possibleDuplicate}</a>. Confirm whether it is a new benchmark, a version, or an alias.</p></div></div> : <div className="source-clear"><span>✓</span><div><strong>No exact source match</strong><p>The repository and normalized benchmark name are not currently indexed.</p></div></div>}
-              <div className="queue-actions"><button className="approve" onClick={() => update(item.id, "Approved")}>Approve benchmark</button>{item.possibleDuplicate && <button onClick={() => update(item.id, "Merged")}>Merge with {item.possibleDuplicate}</button>}<button onClick={() => update(item.id, "Rejected")}>Reject</button></div>
-            </article>
-          ))}
-          {active.length === 0 && <div className="empty-state"><h3>Review queue is clear</h3><p>New benchmark submissions will appear here.</p></div>}
+          {pending.map((item) => <article className="queue-card" key={item.id}><div className="queue-top"><div><span className="pending-label">Pending</span><h2>{item.name}</h2><a href={item.url} target="_blank" rel="noreferrer">{item.url} ↗</a></div><div className="submitted-by"><span>Submitted by</span><strong>@{item.submitter}</strong></div></div>{item.note && <div className="submission-note"><strong>Submitter note</strong><p>{item.note}</p></div>}<div className="source-clear"><span>✓</span><div><strong>Source saved</strong><p>Open the repository and search aliases before approving.</p></div></div><div className="queue-actions"><button className="approve" onClick={() => void update(item, "published")}>Approve benchmark</button><button onClick={() => void update(item, "merged")}>Merge duplicate</button><button onClick={() => void update(item, "rejected")}>Reject</button></div></article>)}
+          {!loading && pending.length === 0 && <div className="empty-state"><h3>Review queue is clear</h3><p>New benchmark submissions will appear here.</p></div>}{loading && <div className="empty-state">Loading submissions…</div>}
         </section>
         <aside className="admin-guidance"><h2>Quick review checklist</h2><ol><li><span>1</span><p><strong>Open the source</strong>Confirm it is a real benchmark repository or Hugging Face page.</p></li><li><span>2</span><p><strong>Search aliases</strong>Check abbreviations, prior versions and paper titles.</p></li><li><span>3</span><p><strong>Choose one action</strong>Approve a distinct benchmark, merge a duplicate, or reject spam.</p></li></ol><p className="guidance-note">Submitting a benchmark does not grant ownership of its page.</p></aside>
       </div>
@@ -664,13 +745,7 @@ function AdminView({ pending, setPending, showNotice }: { pending: PendingBenchm
 }
 
 function Footer() {
-  return (
-    <footer className="site-footer">
-      <div><strong>OpenBenchmarkReview</strong><span>Open source · Community moderated · Independent</span></div>
-      <nav><a href="#home">Benchmarks</a><a href="#about">About</a><a href="https://github.com" target="_blank" rel="noreferrer">GitHub</a></nav>
-      <p>Initiated by Weihang Guo.</p>
-    </footer>
-  );
+  return <footer className="site-footer"><div><strong>OpenBenchmarkReview</strong><span>Open source · Community moderated · Independent</span></div><nav><a href="#home">Benchmarks</a><a href="#about">About</a><a href="https://github.com/WeihangGuo/open-benchmark-review" target="_blank" rel="noreferrer">GitHub</a></nav><p>Initiated by <a href="https://github.com/WeihangGuo" target="_blank" rel="noreferrer">Weihang Guo</a>.</p></footer>;
 }
 
 export default App;

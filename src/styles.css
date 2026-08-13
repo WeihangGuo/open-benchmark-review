@@ -223,6 +223,28 @@ main { min-height: calc(100vh - 190px); }
 .site-footer a { color: var(--link); }
 .site-footer p { grid-column: 1 / -1; margin: 0; padding-top: 10px; border-top: 1px solid #cdd0d0; }
 
+.sign-in-button:disabled, .primary-button:disabled { cursor: default; opacity: .6; }
+.account-button { display: inline-flex; align-items: center; gap: 6px; max-width: 145px; }
+.account-button > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-button img, .mini-avatar { width: 22px; height: 22px; border-radius: 2px; object-fit: cover; }
+.mini-avatar { display: grid; place-items: center; color: var(--red); background: #fff; font-size: 8px; font-weight: 700; }
+.setup-notice { padding: 8px 16px; border-bottom: 1px solid #dfc6a7; color: #78542f; background: #fff4df; text-align: center; font-size: 11px; }
+.avatar-image { object-fit: cover; }
+.composer-options { margin: 0 13px 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.composer-options label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 9px; }
+.composer-options select { padding: 4px 6px; border: 1px solid #c8ccce; background: #fff; font-size: 9px; }
+.reply-target { display: flex; align-items: center; gap: 7px; color: #5c666b; font-size: 9px; }
+.reply-target button { border: 0; background: transparent; color: #777; }
+.evidence a { color: var(--link); overflow-wrap: anywhere; font-size: 9px; }
+.comment-actions button.voted { color: var(--red); font-weight: 700; }
+.modal select { padding: 8px; border: 1px solid #bfc3c5; background: #fff; font-size: 11px; }
+.submission-note { margin: 13px 0 0; padding: 9px; border-left: 2px solid #9ca9ae; background: #f4f5f4; }
+.submission-note strong { font-size: 9px; text-transform: uppercase; }
+.submission-note p { margin: 4px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.access-panel { padding: 70px 0; text-align: center; }
+.access-panel h1 { margin: 0 0 8px; font-size: 28px; }
+.access-panel p { margin: 0 auto 18px; color: var(--muted); }
+
 @media (max-width: 760px) {
   .header-inner { grid-template-columns: 1fr auto; }
   .header-search { display: none; }

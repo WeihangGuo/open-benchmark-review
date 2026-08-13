@@ -54,7 +54,7 @@ create table if not exists public.comments (
   parent_id uuid references public.comments(id) on delete cascade,
   content text not null check (char_length(content) between 2 and 8000),
   tag text not null default 'General',
-  rating smallint check (rating between 1 and 10),
+  rating smallint check (rating between 1 and 5),
   confidence smallint check (confidence between 1 and 5),
   benchmark_version text,
   evidence_url text,
@@ -64,7 +64,9 @@ create table if not exists public.comments (
 );
 
 alter table public.comments add column if not exists guest_name text;
-alter table public.comments add column if not exists rating smallint check (rating between 1 and 10);
+alter table public.comments add column if not exists rating smallint check (rating between 1 and 5);
+alter table public.comments drop constraint if exists comments_rating_check;
+alter table public.comments add constraint comments_rating_check check (rating between 1 and 5);
 alter table public.comments add column if not exists confidence smallint check (confidence between 1 and 5);
 alter table public.comments alter column user_id drop not null;
 alter table public.comments drop constraint if exists comments_identity_check;
@@ -334,7 +336,7 @@ drop policy if exists comments_owner_insert on public.comments;
 create policy comments_owner_insert on public.comments for insert
   with check (
     status = 'published'
-    and rating between 1 and 10
+    and rating between 1 and 5
     and confidence between 1 and 5
     and (
       (auth.uid() is not null and user_id = auth.uid() and guest_name is null)

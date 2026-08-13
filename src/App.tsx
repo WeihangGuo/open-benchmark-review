@@ -123,6 +123,7 @@ function App() {
   const [submitOpen, setSubmitOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [pendingCount, setPendingCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const showNotice = useCallback((message: string) => {
     setNotice(message);
@@ -281,6 +282,8 @@ function App() {
         authLoading={authLoading}
         pendingCount={pendingCount}
         openSubmit={openSubmit}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
       />
       {!databaseReady && backendConfigured && (
         <div className="setup-notice">Database setup is pending. The public starter catalog is shown until the Supabase schema is installed.</div>
@@ -302,7 +305,7 @@ function App() {
             refreshCatalog={loadCatalog}
           />
         ) : (
-          <HomeView benchmarks={benchmarks} openSubmit={openSubmit} />
+          <HomeView benchmarks={benchmarks} openSubmit={openSubmit} query={searchQuery} setQuery={setSearchQuery} />
         )}
       </main>
       <Footer />
@@ -341,12 +344,16 @@ function Header({
   authLoading,
   pendingCount,
   openSubmit,
+  searchQuery,
+  setSearchQuery,
 }: {
   user: User | null;
   role: "user" | "admin";
   authLoading: boolean;
   pendingCount: number;
   openSubmit: () => void;
+  searchQuery: string;
+  setSearchQuery: (value: string) => void;
 }) {
   const name = githubName(user);
   const avatar = githubAvatar(user);
@@ -356,7 +363,7 @@ function Header({
         <div className="header-inner">
           <a className="brand" href="#home" aria-label="Open Benchmark Review home"><span className="brand-name">OpenBenchmarkReview</span></a>
           <label className="header-search">
-            <input aria-label="Search all benchmarks" placeholder="Search benchmarks and comments…" onFocus={() => { if (window.location.hash !== "#home") window.location.hash = "#home"; }} />
+            <input value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); if (window.location.hash !== "#home") window.location.hash = "#home"; }} aria-label="Search benchmarks by name" placeholder="Search benchmark names…" />
             <span>⌕</span>
           </label>
           <nav className="nav-links" aria-label="Primary navigation">
@@ -468,15 +475,14 @@ function AccountPage({ user, role, authLoading, goToLogin, signOut }: {
   );
 }
 
-function HomeView({ benchmarks, openSubmit }: { benchmarks: Benchmark[]; openSubmit: () => void }) {
-  const [query, setQuery] = useState("");
+function HomeView({ benchmarks, openSubmit, query, setQuery }: { benchmarks: Benchmark[]; openSubmit: () => void; query: string; setQuery: (value: string) => void }) {
   const [category, setCategory] = useState("All benchmarks");
   const [promptVisible, setPromptVisible] = useState(true);
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return benchmarks.filter((benchmark) => {
       const matchesCategory = category === "All benchmarks" || benchmark.category === category;
-      const matchesQuery = !normalized || [benchmark.name, benchmark.fullName, benchmark.summary, ...benchmark.tags].join(" ").toLowerCase().includes(normalized);
+      const matchesQuery = !normalized || benchmark.name.toLowerCase().includes(normalized);
       return matchesCategory && matchesQuery;
     });
   }, [benchmarks, category, query]);
@@ -489,7 +495,7 @@ function HomeView({ benchmarks, openSubmit }: { benchmarks: Benchmark[]; openSub
       <section className="browse-section" id="browse">
         <div className="section-heading"><div><h2>All benchmarks</h2></div><p>{filtered.length} results · {commentCount} comments</p></div>
         <div className="search-row">
-          <label className="search-box"><span aria-hidden="true">⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by benchmark, task, or capability…" aria-label="Search benchmarks" /></label>
+          <label className="search-box"><span aria-hidden="true">⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search benchmark names…" aria-label="Search benchmarks by name" /></label>
           <div className="filter-tabs" role="group" aria-label="Filter by category">
             {["All benchmarks", "Video generation", "Robotics"].map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{item}</button>)}
           </div>

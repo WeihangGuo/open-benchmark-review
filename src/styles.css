@@ -224,6 +224,7 @@ main { min-height: calc(100vh - 190px); }
 .account-button > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account-button img, .mini-avatar { width: 22px; height: 22px; border-radius: 2px; object-fit: cover; }
 .mini-avatar { display: grid; place-items: center; color: var(--red); background: #fff; font-size: 8px; font-weight: 700; }
+.auth-loading { color: rgba(255,255,255,.8); font-size: 12px; }
 .setup-notice { padding: 8px 16px; border-bottom: 1px solid #dfc6a7; color: #78542f; background: #fff4df; text-align: center; font-size: 11px; }
 .avatar-image { object-fit: cover; }
 .composer-options { margin: 0 13px 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -240,6 +241,38 @@ main { min-height: calc(100vh - 190px); }
 .access-panel { padding: 70px 0; text-align: center; }
 .access-panel h1 { margin: 0 0 8px; font-size: 28px; }
 .access-panel p { margin: 0 auto 18px; color: var(--muted); }
+
+.auth-page { width: min(1100px, calc(100% - 32px)); min-height: 520px; margin: 0 auto; padding: 70px 0; }
+.auth-card { width: min(440px, 100%); margin: 0 auto; padding: 25px 27px; border: 1px solid var(--line); border-top: 3px solid var(--red); border-radius: 2px; background: #fff; }
+.auth-card h1 { margin: 0 0 10px; font-size: 27px; }
+.auth-card > p:not(.eyebrow) { margin: 0 0 19px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.auth-card .auth-action { display: inline-block; }
+.github-login-button { width: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; padding: 9px 13px; border: 1px solid #25292d; border-radius: 2px; color: #fff; background: #24292f; font-size: 12px; font-weight: 700; }
+.github-login-button:hover { background: #15181b; }
+.github-login-button:disabled { cursor: default; opacity: .6; }
+.github-mark { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; color: #24292f; background: #fff; font-size: 7px; font-weight: 800; }
+.auth-card .auth-note { margin: 9px 0 22px !important; font-size: 9px !important; }
+.back-link { display: block; margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--soft-line); color: var(--link); font-size: 10px; }
+
+.account-page { width: min(900px, calc(100% - 32px)); min-height: 520px; margin: 0 auto; padding-bottom: 60px; }
+.account-heading { display: flex; align-items: center; gap: 17px; padding: 20px 0 24px; border-bottom: 1px solid var(--line); }
+.account-heading > img, .account-avatar { width: 66px; height: 66px; flex: 0 0 auto; border-radius: 3px; object-fit: cover; }
+.account-avatar { display: grid; place-items: center; color: #fff; background: #607983; font-size: 17px; font-weight: 700; }
+.account-heading h1 { margin: 0 0 5px; font-size: 28px; }
+.account-heading > div > p:last-child { margin: 0; color: var(--muted); font-size: 11px; }
+.account-role { color: #506970; font-weight: 700; }
+.account-layout { display: grid; grid-template-columns: minmax(0, 1fr) 245px; gap: 22px; padding-top: 22px; }
+.account-panel { padding: 17px 18px; border: 1px solid var(--line); border-radius: 2px; background: #fff; }
+.account-panel h2 { margin: 0 0 14px; font-size: 16px; }
+.account-panel > p { margin: 15px 0 0; color: var(--muted); font-size: 10px; }
+.account-stats { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--soft-line); border-bottom: 1px solid var(--soft-line); }
+.account-stats > div { padding: 16px 8px 16px 0; display: flex; flex-direction: column; gap: 4px; }
+.account-stats > div + div { padding-left: 16px; border-left: 1px solid var(--soft-line); }
+.account-stats strong { color: var(--red); font-size: 24px; }
+.account-stats span { color: var(--muted); font-size: 9px; }
+.account-controls { display: flex; flex-direction: column; align-items: flex-start; gap: 11px; }
+.account-controls a { color: var(--link); font-size: 10px; }
+.sign-out-control { width: 100%; margin-top: 8px; }
 
 @media (max-width: 760px) {
   .header-inner { grid-template-columns: 1fr auto; }
@@ -267,6 +300,7 @@ main { min-height: calc(100vh - 190px); }
   .comment-tags, .comment-card > p, .evidence, .comment-actions { margin-left: 0; }
   .composer-footer > span { display: none; }
   .admin-heading { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .account-layout { grid-template-columns: 1fr; }
   .queue-top { flex-direction: column; }
   .submitted-by { align-items: flex-start; }
   .queue-actions { flex-wrap: wrap; }

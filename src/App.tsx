@@ -273,12 +273,17 @@ function App() {
     }
   }, [user]);
 
-  const signIn = useCallback(async (returnHash = window.location.hash || "#home") => {
+  const goToLogin = useCallback((returnHash = window.location.hash || "#home") => {
+    localStorage.setItem("obr-return-hash", returnHash === "#login" ? "#home" : returnHash);
+    window.location.hash = "#login";
+  }, []);
+
+  const signIn = useCallback(async () => {
     if (!supabase) {
       showNotice("The shared backend is not configured yet.");
       return;
     }
-    localStorage.setItem("obr-return-hash", returnHash);
+    if (!localStorage.getItem("obr-return-hash")) localStorage.setItem("obr-return-hash", "#home");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "github",
       options: { redirectTo: authRedirectUrl() },
@@ -289,13 +294,14 @@ function App() {
   const signOut = useCallback(async () => {
     if (!supabase) return;
     const { error } = await supabase.auth.signOut();
+    if (!error) window.location.hash = "#home";
     showNotice(error ? error.message : "Signed out.");
   }, [showNotice]);
 
   const openSubmit = () => {
     if (!user) {
       localStorage.setItem("obr-open-submit-after-auth", "true");
-      void signIn("#home");
+      goToLogin("#home");
       return;
     }
     if (!databaseReady) {
@@ -316,21 +322,23 @@ function App() {
         authLoading={authLoading}
         pendingCount={pendingCount}
         openSubmit={openSubmit}
-        signIn={signIn}
-        signOut={signOut}
       />
       {!databaseReady && backendConfigured && (
         <div className="setup-notice">Database setup is pending. The public starter catalog is shown until the Supabase schema is installed.</div>
       )}
       <main>
-        {hash === "#admin" ? (
-          <AdminView user={user} role={role} signIn={signIn} showNotice={showNotice} onQueueChange={setPendingCount} />
+        {hash === "#login" ? (
+          <LoginPage user={user} authLoading={authLoading} signIn={signIn} />
+        ) : hash === "#account" ? (
+          <AccountPage user={user} role={role} authLoading={authLoading} goToLogin={goToLogin} signOut={signOut} />
+        ) : hash === "#admin" ? (
+          <AdminView user={user} role={role} goToLogin={goToLogin} showNotice={showNotice} onQueueChange={setPendingCount} />
         ) : selected ? (
           <BenchmarkView
             benchmark={selected}
             user={user}
             databaseReady={databaseReady}
-            signIn={signIn}
+            goToLogin={goToLogin}
             showNotice={showNotice}
             refreshCatalog={loadCatalog}
           />
@@ -374,16 +382,12 @@ function Header({
   authLoading,
   pendingCount,
   openSubmit,
-  signIn,
-  signOut,
 }: {
   user: User | null;
   role: "user" | "admin";
   authLoading: boolean;
   pendingCount: number;
   openSubmit: () => void;
-  signIn: (returnHash?: string) => Promise<void>;
-  signOut: () => Promise<void>;
 }) {
   const name = githubName(user);
   const avatar = githubAvatar(user);
@@ -400,12 +404,12 @@ function Header({
             <button className="text-button" onClick={openSubmit}>Add benchmark</button>
             {role === "admin" && <a href="#admin" className="admin-link">Admin {pendingCount > 0 && <span>{pendingCount}</span>}</a>}
             {user ? (
-              <button className="profile-button account-button" onClick={() => void signOut()} title="Sign out">
+              <a className="profile-button account-button" href="#account" title="Open account">
                 {avatar ? <img src={avatar} alt="" /> : <span className="mini-avatar">{initials(name)}</span>}
                 <span>{name}</span>
-              </button>
+              </a>
             ) : (
-              <button className="sign-in-button" disabled={authLoading} onClick={() => void signIn()}>{authLoading ? "Loading…" : "Login"}</button>
+              authLoading ? <span className="auth-loading">Loading…</span> : <a className="sign-in-button" href="#login">Login</a>
             )}
           </nav>
         </div>
@@ -417,6 +421,91 @@ function Header({
         </div>
       </div>
     </>
+  );
+}
+
+function LoginPage({ user, authLoading, signIn }: { user: User | null; authLoading: boolean; signIn: () => Promise<void> }) {
+  const name = githubName(user);
+  return (
+    <div className="auth-page">
+      <section className="auth-card">
+        <p className="eyebrow">Community account</p>
+        {user ? (
+          <>
+            <h1>You are already signed in</h1>
+            <p>Continue as <strong>@{name}</strong>, or open your account page to view your activity and account controls.</p>
+            <a className="primary-button auth-action" href="#account">Open my account</a>
+          </>
+        ) : (
+          <>
+            <h1>Login</h1>
+            <p>Use a GitHub account to submit benchmarks, comment, reply, and vote. Authorization starts only after you click the button below.</p>
+            <button className="github-login-button" disabled={authLoading} onClick={() => void signIn()}>
+              <span className="github-mark" aria-hidden="true">GH</span>
+              {authLoading ? "Checking session…" : "Continue with GitHub"}
+            </button>
+            <p className="auth-note">GitHub may reuse the account currently signed in within this browser.</p>
+          </>
+        )}
+        <a className="back-link" href="#home">← Back to benchmarks</a>
+      </section>
+    </div>
+  );
+}
+
+function AccountPage({ user, role, authLoading, goToLogin, signOut }: {
+  user: User | null;
+  role: "user" | "admin";
+  authLoading: boolean;
+  goToLogin: (returnHash?: string) => void;
+  signOut: () => Promise<void>;
+}) {
+  const [activity, setActivity] = useState({ comments: 0, submissions: 0 });
+  const [activityLoading, setActivityLoading] = useState(false);
+
+  useEffect(() => {
+    if (!supabase || !user) return;
+    setActivityLoading(true);
+    void Promise.all([
+      supabase.from("comments").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      supabase.from("benchmarks").select("id", { count: "exact", head: true }).eq("submitted_by", user.id),
+    ]).then(([commentsResult, submissionsResult]) => {
+      setActivity({ comments: commentsResult.count ?? 0, submissions: submissionsResult.count ?? 0 });
+      setActivityLoading(false);
+    });
+  }, [user]);
+
+  if (authLoading) return <div className="account-page access-panel"><p>Checking your account…</p></div>;
+  if (!user) return <div className="account-page access-panel"><h1>Account</h1><p>Sign in to view your profile and community activity.</p><button className="primary-button" onClick={() => goToLogin("#account")}>Go to login</button></div>;
+
+  const name = githubName(user);
+  const avatar = githubAvatar(user);
+  const githubUsername = user.user_metadata?.user_name || user.user_metadata?.preferred_username || "";
+
+  return (
+    <div className="account-page">
+      <div className="breadcrumbs"><a href="#home">Open Benchmark Review</a><span>/</span><span>Account</span></div>
+      <section className="account-heading">
+        {avatar ? <img src={avatar} alt="" /> : <span className="account-avatar">{initials(name)}</span>}
+        <div><p className="eyebrow">Community account</p><h1>{name}</h1><p>Signed in with GitHub · <span className="account-role">{role === "admin" ? "Administrator" : "Community member"}</span></p></div>
+      </section>
+      <div className="account-layout">
+        <section className="account-panel">
+          <h2>My activity</h2>
+          <div className="account-stats">
+            <div><strong>{activityLoading ? "–" : activity.comments}</strong><span>Comments</span></div>
+            <div><strong>{activityLoading ? "–" : activity.submissions}</strong><span>Benchmark submissions</span></div>
+          </div>
+          <p>Your comments and submissions are attributed to this GitHub identity.</p>
+        </section>
+        <aside className="account-panel account-controls">
+          <h2>Account</h2>
+          {githubUsername && <a href={`https://github.com/${githubUsername}`} target="_blank" rel="noreferrer">View GitHub profile ↗</a>}
+          {role === "admin" && <a href="#admin">Open admin queue →</a>}
+          <button className="secondary-button sign-out-control" onClick={() => void signOut()}>Sign out</button>
+        </aside>
+      </div>
+    </div>
   );
 }
 
@@ -469,11 +558,11 @@ function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
   );
 }
 
-function BenchmarkView({ benchmark, user, databaseReady, signIn, showNotice, refreshCatalog }: {
+function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, refreshCatalog }: {
   benchmark: Benchmark;
   user: User | null;
   databaseReady: boolean;
-  signIn: (returnHash?: string) => Promise<void>;
+  goToLogin: (returnHash?: string) => void;
   showNotice: (message: string) => void;
   refreshCatalog: () => Promise<void>;
 }) {
@@ -535,7 +624,7 @@ function BenchmarkView({ benchmark, user, databaseReady, signIn, showNotice, ref
   const submitComment = async (event: FormEvent) => {
     event.preventDefault();
     if (!user) {
-      void signIn(`#benchmark/${benchmark.id}`);
+      goToLogin(`#benchmark/${benchmark.id}`);
       return;
     }
     if (!supabase || !databaseReady || !benchmark.databaseId || commentText.trim().length < 2) return;
@@ -554,7 +643,7 @@ function BenchmarkView({ benchmark, user, databaseReady, signIn, showNotice, ref
 
   const toggleHelpful = async (comment: Comment) => {
     if (!user) {
-      void signIn(`#benchmark/${benchmark.id}`);
+      goToLogin(`#benchmark/${benchmark.id}`);
       return;
     }
     if (!supabase) return;
@@ -581,7 +670,7 @@ function BenchmarkView({ benchmark, user, databaseReady, signIn, showNotice, ref
 
   const reportComment = async (comment: Comment) => {
     if (!user) {
-      void signIn(`#benchmark/${benchmark.id}`);
+      goToLogin(`#benchmark/${benchmark.id}`);
       return;
     }
     if (!supabase) return;
@@ -671,7 +760,7 @@ function SubmitDialog({ benchmarks, pendingCount, onClose, onSubmit }: { benchma
   );
 }
 
-function AdminView({ user, role, signIn, showNotice, onQueueChange }: { user: User | null; role: "user" | "admin"; signIn: (returnHash?: string) => Promise<void>; showNotice: (message: string) => void; onQueueChange: (count: number) => void }) {
+function AdminView({ user, role, goToLogin, showNotice, onQueueChange }: { user: User | null; role: "user" | "admin"; goToLogin: (returnHash?: string) => void; showNotice: (message: string) => void; onQueueChange: (count: number) => void }) {
   const [pending, setPending] = useState<PendingBenchmark[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -724,7 +813,7 @@ function AdminView({ user, role, signIn, showNotice, onQueueChange }: { user: Us
     void loadPending();
   };
 
-  if (!user) return <div className="admin-page access-panel"><h1>Admin</h1><p>Sign in with the administrator GitHub account to review submissions.</p><button className="primary-button" onClick={() => void signIn("#admin")}>Sign in with GitHub</button></div>;
+  if (!user) return <div className="admin-page access-panel"><h1>Admin</h1><p>Sign in with the administrator GitHub account to review submissions.</p><button className="primary-button" onClick={() => goToLogin("#admin")}>Go to login</button></div>;
   if (role !== "admin") return <div className="admin-page access-panel"><h1>Admin</h1><p>Your account does not have administrator access.</p><a href="#home" className="view-link">Return to benchmarks →</a></div>;
 
   return (

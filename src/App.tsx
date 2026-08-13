@@ -759,7 +759,7 @@ function SubmitDialog({ benchmarks, pendingCount, onClose, onSubmit }: { benchma
           {url && !supportedSource && <div className="duplicate-warning"><strong>Unsupported source</strong><span>Please provide a github.com or huggingface.co repository URL.</span></div>}
           {duplicate && <div className="duplicate-warning"><strong>{repoDuplicate ? "This source is already indexed" : "Possible duplicate name"}</strong><span>{duplicate.name} already uses this {repoDuplicate ? "repository" : "name"}. Review the existing page before submitting.</span><a href={`#benchmark/${duplicate.id}`} onClick={onClose}>View existing page →</a></div>}
           {!duplicate && supportedSource && <div className="clear-check">✓ No exact repository match found</div>}
-          <label><span>Note for the admin <em>Optional</em></span><textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="Why is this a distinct benchmark? Anything the admin should know?" /></label>
+          <label><span>Description <em>Optional</em></span><textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="Briefly describe this benchmark." /></label>
           <div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button type="submit" className="primary-button" disabled={submitting || !supportedSource || Boolean(repoDuplicate)}>{submitting ? "Submitting…" : "Submit for review"}</button></div>
         </form>
         <p className="modal-footnote">{pendingCount === undefined ? "Submissions are checked before publication." : `${pendingCount} submission${pendingCount === 1 ? "" : "s"} awaiting review.`}</p>

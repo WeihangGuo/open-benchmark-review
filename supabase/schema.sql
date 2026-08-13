@@ -18,7 +18,7 @@ create table if not exists public.benchmarks (
   name text not null,
   full_name text not null default '',
   summary text not null default '',
-  category text not null check (category in ('Video generation', 'Action understanding')),
+  category text not null check (category in ('Video generation', 'Robotics')),
   tags text[] not null default '{}',
   year integer check (year between 1900 and 2100),
   venue text not null default '',
@@ -248,7 +248,7 @@ begin
   if char_length(trim(p_name)) < 2 or char_length(trim(p_name)) > 160 then
     raise exception 'Benchmark name must be between 2 and 160 characters';
   end if;
-  if p_category not in ('Video generation', 'Action understanding') then
+  if p_category not in ('Video generation', 'Robotics') then
     raise exception 'Invalid benchmark category';
   end if;
 
@@ -372,10 +372,7 @@ insert into public.benchmarks (slug, name, full_name, summary, category, tags, y
 values
   ('vbench', 'VBench', 'Comprehensive Benchmark Suite for Video Generative Models', 'A multi-dimensional evaluation suite for text-to-video and image-to-video generation, with dedicated prompt sets and automatic metrics.', 'Video generation', array['Text-to-video','Image-to-video','16 dimensions'], 2024, 'CVPR', 'published', now()),
   ('evalcrafter', 'EvalCrafter', 'Benchmarking and Evaluating Large Video Generation Models', 'Evaluates visual quality, motion quality, temporal consistency and text-video alignment with objective metrics and user studies.', 'Video generation', array['Text-to-video','Human study','Motion'], 2024, 'CVPR', 'published', now()),
-  ('t2v-compbench', 'T2V-CompBench', 'A Comprehensive Benchmark for Compositional Text-to-video Generation', 'Focuses on compositional generation, including attribute binding, spatial relationships, numeracy, motion binding and complex compositions.', 'Video generation', array['Compositionality','Text-to-video','Fine-grained'], 2025, 'CVPR', 'published', now()),
-  ('kinetics-400', 'Kinetics-400', 'The Kinetics Human Action Video Dataset', 'A large-scale collection of human action clips sourced from YouTube, widely used for action recognition training and evaluation.', 'Action understanding', array['Action recognition','YouTube','400 classes'], 2017, 'CVPR', 'published', now()),
-  ('ssv2', 'Something-Something V2', 'The Something-Something Video Database, Version 2', 'A crowd-acted dataset emphasizing temporal reasoning and human-object interactions with everyday objects.', 'Action understanding', array['Temporal reasoning','Object interaction','174 classes'], 2017, 'ICCV', 'published', now()),
-  ('ava', 'AVA', 'A Video Dataset of Spatio-temporally Localized Atomic Visual Actions', 'Provides person-centric, spatio-temporal action annotations in movie clips for localized human action understanding.', 'Action understanding', array['Action localization','Atomic actions','Movies'], 2018, 'CVPR', 'published', now())
+  ('t2v-compbench', 'T2V-CompBench', 'A Comprehensive Benchmark for Compositional Text-to-video Generation', 'Focuses on compositional generation, including attribute binding, spatial relationships, numeracy, motion binding and complex compositions.', 'Video generation', array['Compositionality','Text-to-video','Fine-grained'], 2025, 'CVPR', 'published', now())
 on conflict (slug) do nothing;
 
 insert into public.benchmark_sources (benchmark_id, source_type, url, canonical_id)
@@ -386,13 +383,7 @@ from (values
   ('evalcrafter','github','https://github.com/EvalCrafter/EvalCrafter'),
   ('evalcrafter','project_page','https://evalcrafter.github.io/'),
   ('t2v-compbench','github','https://github.com/KaiyueSun98/T2V-CompBench'),
-  ('t2v-compbench','paper','https://arxiv.org/abs/2407.14505'),
-  ('kinetics-400','github','https://github.com/cvdfoundation/kinetics-dataset'),
-  ('kinetics-400','paper','https://arxiv.org/abs/1705.06950'),
-  ('ssv2','huggingface','https://huggingface.co/datasets/HuggingFaceM4/something_something_v2'),
-  ('ssv2','paper','https://arxiv.org/abs/1706.04261'),
-  ('ava','project_page','https://research.google.com/ava/'),
-  ('ava','paper','https://arxiv.org/abs/1705.08421')
+  ('t2v-compbench','paper','https://arxiv.org/abs/2407.14505')
 ) as s(slug, source_type, url)
 join public.benchmarks b on b.slug = s.slug
 on conflict (canonical_id) where canonical_id is not null do nothing;

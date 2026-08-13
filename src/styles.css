@@ -76,7 +76,7 @@ main { min-height: calc(100vh - 190px); }
 .full-name { margin: 0; color: #51595e; font-size: 12px; }
 .category-badge { flex: 0 0 auto; border-radius: 2px; padding: 4px 6px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
 .category-badge.generation { color: #41616c; background: var(--blue-soft); }
-.category-badge.action { color: #875027; background: var(--orange-soft); }
+.category-badge.robotics { color: #875027; background: var(--orange-soft); }
 .benchmark-summary { max-width: 760px; margin: 10px 0; color: #4e5559; font-size: 12px; line-height: 1.5; }
 .tag-row, .topic-list { display: flex; flex-wrap: wrap; gap: 5px; }
 .tag-row span, .topic-list span { border-radius: 2px; padding: 3px 6px; color: #646b70; background: #e9eaea; font-size: 9px; }

@@ -9,7 +9,7 @@ import {
   supabase,
 } from "./lib/supabase";
 
-type Category = "Video generation" | "Action understanding";
+type Category = "Video generation" | "Robotics";
 
 type Benchmark = {
   id: string;
@@ -95,48 +95,6 @@ const fallbackBenchmarks: Benchmark[] = [
     comments: 0,
     updated: "Starter catalog",
   },
-  {
-    id: "kinetics-400",
-    name: "Kinetics-400",
-    fullName: "The Kinetics Human Action Video Dataset",
-    summary: "A large-scale collection of human action clips sourced from YouTube, widely used for action recognition training and evaluation.",
-    category: "Action understanding",
-    tags: ["Action recognition", "YouTube", "400 classes"],
-    year: 2017,
-    venue: "CVPR",
-    repo: "https://github.com/cvdfoundation/kinetics-dataset",
-    paper: "https://arxiv.org/abs/1705.06950",
-    comments: 0,
-    updated: "Starter catalog",
-  },
-  {
-    id: "ssv2",
-    name: "Something-Something V2",
-    fullName: "The Something-Something Video Database, Version 2",
-    summary: "A crowd-acted dataset emphasizing temporal reasoning and human-object interactions with everyday objects.",
-    category: "Action understanding",
-    tags: ["Temporal reasoning", "Object interaction", "174 classes"],
-    year: 2017,
-    venue: "ICCV",
-    repo: "https://huggingface.co/datasets/HuggingFaceM4/something_something_v2",
-    paper: "https://arxiv.org/abs/1706.04261",
-    comments: 0,
-    updated: "Starter catalog",
-  },
-  {
-    id: "ava",
-    name: "AVA",
-    fullName: "A Video Dataset of Spatio-temporally Localized Atomic Visual Actions",
-    summary: "Provides person-centric, spatio-temporal action annotations in movie clips for localized human action understanding.",
-    category: "Action understanding",
-    tags: ["Action localization", "Atomic actions", "Movies"],
-    year: 2018,
-    venue: "CVPR",
-    repo: "https://research.google.com/ava/",
-    paper: "https://arxiv.org/abs/1705.08421",
-    comments: 0,
-    updated: "Starter catalog",
-  },
 ];
 
 function relativeTime(value?: string) {
@@ -177,6 +135,7 @@ function App() {
       .from("benchmarks")
       .select("id, slug, name, full_name, summary, category, tags, year, venue, updated_at, benchmark_sources(source_type, url)")
       .eq("status", "published")
+      .in("category", ["Video generation", "Robotics"])
       .order("name");
 
     if (error) {
@@ -532,7 +491,7 @@ function HomeView({ benchmarks, openSubmit }: { benchmarks: Benchmark[]; openSub
         <div className="search-row">
           <label className="search-box"><span aria-hidden="true">⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by benchmark, task, or capability…" aria-label="Search benchmarks" /></label>
           <div className="filter-tabs" role="group" aria-label="Filter by category">
-            {["All benchmarks", "Video generation", "Action understanding"].map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{item}</button>)}
+            {["All benchmarks", "Video generation", "Robotics"].map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{item}</button>)}
           </div>
         </div>
         <div className="benchmark-list">
@@ -548,7 +507,7 @@ function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
   return (
     <article className="benchmark-card">
       <div className="benchmark-main">
-        <div className="benchmark-title-row"><div className="benchmark-heading"><div className="benchmark-name-line"><a href={`#benchmark/${benchmark.id}`}><h3>{benchmark.name}</h3></a><span className={`category-badge ${benchmark.category === "Video generation" ? "generation" : "action"}`}>{benchmark.category}</span></div><p className="full-name">{benchmark.fullName}</p></div></div>
+        <div className="benchmark-title-row"><div className="benchmark-heading"><div className="benchmark-name-line"><a href={`#benchmark/${benchmark.id}`}><h3>{benchmark.name}</h3></a><span className={`category-badge ${benchmark.category === "Video generation" ? "generation" : "robotics"}`}>{benchmark.category}</span></div><p className="full-name">{benchmark.fullName}</p></div></div>
         <p className="benchmark-summary">{benchmark.summary}</p><div className="tag-row">{benchmark.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
       </div>
       <div className="benchmark-meta">
@@ -690,7 +649,7 @@ function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, 
     <div className="detail-page">
       <div className="breadcrumbs"><a href="#home">Benchmarks</a><span>/</span><span>{benchmark.name}</span></div>
       <section className="detail-hero">
-        <div className="detail-copy"><div className="detail-label-row"><span className={`category-badge ${benchmark.category === "Video generation" ? "generation" : "action"}`}>{benchmark.category}</span><span className="status-dot"><i /> Open discussion</span></div><h1>{benchmark.name}</h1><p className="detail-full-name">{benchmark.fullName}</p><p className="detail-summary">{benchmark.summary}</p><div className="source-links" id="sources">{benchmark.paper && <a href={benchmark.paper} target="_blank" rel="noreferrer">Paper ↗</a>}{benchmark.repo && <a href={benchmark.repo} target="_blank" rel="noreferrer">Official source ↗</a>}</div></div>
+        <div className="detail-copy"><div className="detail-label-row"><span className={`category-badge ${benchmark.category === "Video generation" ? "generation" : "robotics"}`}>{benchmark.category}</span><span className="status-dot"><i /> Open discussion</span></div><h1>{benchmark.name}</h1><p className="detail-full-name">{benchmark.fullName}</p><p className="detail-summary">{benchmark.summary}</p><div className="source-links" id="sources">{benchmark.paper && <a href={benchmark.paper} target="_blank" rel="noreferrer">Paper ↗</a>}{benchmark.repo && <a href={benchmark.repo} target="_blank" rel="noreferrer">Official source ↗</a>}</div></div>
         <aside className="fact-card"><h2>Benchmark facts</h2><dl><div><dt>Introduced</dt><dd>{benchmark.venue} {benchmark.year}</dd></div><div><dt>Primary task</dt><dd>{benchmark.category}</dd></div><div><dt>Source status</dt><dd><span className="verified">✓ Indexed</span></dd></div><div><dt>Comments</dt><dd>{comments.length}</dd></div></dl><button className="plain-link" onClick={() => document.getElementById("comment-form")?.scrollIntoView({ behavior: "smooth" })}>Join the discussion →</button></aside>
       </section>
       <nav className="detail-tabs" aria-label="Benchmark sections"><button className={activeSection === "overview" ? "active" : ""} onClick={() => scrollToSection("overview")}>Overview</button><button className={activeSection === "discussion" ? "active" : ""} onClick={() => scrollToSection("discussion")}>Comments <span>{comments.length}</span></button><button className={activeSection === "sources" ? "active" : ""} onClick={() => scrollToSection("sources")}>Sources</button></nav>
@@ -752,7 +711,7 @@ function SubmitDialog({ benchmarks, pendingCount, onClose, onSubmit }: { benchma
         <div className="modal-header"><div><p className="eyebrow">Community submission</p><h2 id="submit-title">Add a benchmark</h2></div><button onClick={onClose} aria-label="Close">×</button></div><p>Submit the benchmark’s canonical source. An admin will do a quick duplicate check before the page becomes public.</p>
         <form onSubmit={submit}>
           <label><span>Benchmark name</span><input value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. VBench" required minLength={2} maxLength={160} /></label>
-          <label><span>Category</span><select value={category} onChange={(event) => setCategory(event.target.value as Category)}><option>Video generation</option><option>Action understanding</option></select></label>
+          <label><span>Category</span><select value={category} onChange={(event) => setCategory(event.target.value as Category)}><option>Video generation</option><option>Robotics</option></select></label>
           <label><span>GitHub or Hugging Face repository</span><input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://github.com/organization/repository" type="url" required /></label>
           {url && !supportedSource && <div className="duplicate-warning"><strong>Unsupported source</strong><span>Please provide a github.com or huggingface.co repository URL.</span></div>}
           {duplicate && <div className="duplicate-warning"><strong>{repoDuplicate ? "This source is already indexed" : "Possible duplicate name"}</strong><span>{duplicate.name} already uses this {repoDuplicate ? "repository" : "name"}. Review the existing page before submitting.</span><a href={`#benchmark/${duplicate.id}`} onClick={onClose}>View existing page →</a></div>}

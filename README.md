@@ -32,6 +32,6 @@ Comments, sign-in state, votes, and benchmark submissions are stored only in the
 
 ## Project status
 
-This is an early prototype intended for community feedback. It is independent and not affiliated with OpenReview.
+This is an early prototype intended for community feedback.
 
 Initiated by Weihang Guo.

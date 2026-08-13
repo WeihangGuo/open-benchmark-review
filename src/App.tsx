@@ -305,7 +305,7 @@ function Header({
       <header className="site-header">
         <div className="header-inner">
           <a className="brand" href="#home" aria-label="Open Benchmark Review home">
-            <span className="brand-name">OpenBenchmarkReview</span><span className="brand-domain">.org</span>
+            <span className="brand-name">OpenBenchmarkReview</span>
           </a>
           <label className="header-search">
             <input aria-label="Search all benchmarks" placeholder="Search benchmarks and comments…" onFocus={() => { if (window.location.hash !== "#home") window.location.hash = "#home"; }} />
@@ -321,7 +321,7 @@ function Header({
                 showNotice(signedIn ? "Signed out of the prototype." : "Prototype GitHub sign-in complete.");
               }}
             >
-              {signedIn ? "weihang-research" : "Login"}
+              {signedIn ? "Account" : "Login"}
             </button>
           </nav>
         </div>
@@ -612,7 +612,7 @@ function SubmitDialog({
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!name.trim() || !url.trim()) return;
-    onSubmit({ id: Date.now(), name: name.trim(), url: url.trim(), submitter: "weihang-research", status: "Pending", possibleDuplicate: duplicate?.name });
+    onSubmit({ id: Date.now(), name: name.trim(), url: url.trim(), submitter: "community-user", status: "Pending", possibleDuplicate: duplicate?.name });
   };
 
   return (
@@ -667,8 +667,8 @@ function Footer() {
   return (
     <footer className="site-footer">
       <div><strong>OpenBenchmarkReview</strong><span>Open source · Community moderated · Independent</span></div>
-      <nav><a href="#home">Benchmarks</a><a href="#about">About</a><a href="https://github.com" target="_blank" rel="noreferrer">GitHub</a><a href="mailto:hello@example.org">Contact</a></nav>
-      <p>Initiated by Weihang Guo · Not affiliated with OpenReview.</p>
+      <nav><a href="#home">Benchmarks</a><a href="#about">About</a><a href="https://github.com" target="_blank" rel="noreferrer">GitHub</a></nav>
+      <p>Initiated by Weihang Guo.</p>
     </footer>
   );
 }

@@ -216,7 +216,6 @@ main { min-height: calc(100vh - 190px); }
 .site-footer > div strong { color: #42494d; font-size: 13px; }
 .site-footer nav { display: flex; gap: 15px; }
 .site-footer a { color: var(--link); }
-.site-footer p { grid-column: 1 / -1; margin: 0; padding-top: 10px; border-top: 1px solid #cdd0d0; }
 
 .sign-in-button:disabled, .primary-button:disabled { cursor: default; opacity: .6; }
 .account-button { display: inline-flex; align-items: center; gap: 6px; max-width: 145px; }
@@ -310,7 +309,6 @@ main { min-height: calc(100vh - 190px); }
   .submitted-by { align-items: flex-start; }
   .queue-actions { flex-wrap: wrap; }
   .site-footer { grid-template-columns: 1fr; }
-  .site-footer p { grid-column: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }

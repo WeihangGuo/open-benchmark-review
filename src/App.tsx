@@ -841,7 +841,7 @@ function AdminView({ user, role, goToLogin, showNotice, onQueueChange }: { user:
 }
 
 function Footer() {
-  return <footer className="site-footer"><div><strong>OpenBenchmarkReview</strong><span>Open source · Community moderated · Independent</span></div><nav><a href="#home">Benchmarks</a><a href="https://github.com/WeihangGuo/open-benchmark-review" target="_blank" rel="noreferrer">GitHub</a></nav><p>Initiated by <a href="https://github.com/WeihangGuo" target="_blank" rel="noreferrer">Weihang Guo</a>.</p></footer>;
+  return <footer className="site-footer"><div><strong>OpenBenchmarkReview</strong><span>Open source · Community moderated · Independent</span></div><nav><a href="#home">Benchmarks</a><a href="https://github.com/WeihangGuo/open-benchmark-review" target="_blank" rel="noreferrer">GitHub</a></nav></footer>;
 }
 
 export default App;

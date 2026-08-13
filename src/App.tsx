@@ -37,6 +37,8 @@ type Comment = {
   avatar?: string;
   affiliation: string;
   tag: string;
+  rating?: number;
+  confidence?: number;
   body: string;
   evidence?: string;
   version?: string;
@@ -546,6 +548,8 @@ function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, 
   const [comments, setComments] = useState<Comment[]>([]);
   const [filterTag, setFilterTag] = useState("All comments");
   const [commentTag, setCommentTag] = useState("General");
+  const [commentRating, setCommentRating] = useState<number | "">("");
+  const [commentConfidence, setCommentConfidence] = useState<number | "">("");
   const [commentText, setCommentText] = useState("");
   const [guestName, setGuestName] = useState("");
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
@@ -562,7 +566,7 @@ function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, 
       setComments([]);
       return;
     }
-    const { data: rows, error } = await supabase.from("comments").select("id, user_id, guest_name, parent_id, content, tag, benchmark_version, evidence_url, created_at").eq("benchmark_id", benchmark.databaseId).eq("status", "published").order("created_at", { ascending: true });
+    const { data: rows, error } = await supabase.from("comments").select("id, user_id, guest_name, parent_id, content, tag, rating, confidence, benchmark_version, evidence_url, created_at").eq("benchmark_id", benchmark.databaseId).eq("status", "published").order("created_at", { ascending: true });
     if (error) {
       showNotice(error.message);
       return;
@@ -592,6 +596,8 @@ function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, 
         avatar: profile?.avatar_url || undefined,
         affiliation: profile ? "Community member" : "Guest commenter",
         tag: row.tag,
+        rating: row.rating ?? undefined,
+        confidence: row.confidence ?? undefined,
         body: row.content,
         evidence: row.evidence_url || undefined,
         version: row.benchmark_version || undefined,
@@ -608,18 +614,24 @@ function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, 
   const submitComment = async (event: FormEvent) => {
     event.preventDefault();
     if (!supabase || !databaseReady || !benchmark.databaseId || commentText.trim().length < 2) return;
+    if (!commentRating || !commentConfidence) {
+      showNotice("Please select a rating and confidence level.");
+      return;
+    }
     if (!user && guestName.trim().length < 2) {
       showNotice("Please enter a display name to comment.");
       return;
     }
     setPosting(true);
-    const { error } = await supabase.from("comments").insert({ benchmark_id: benchmark.databaseId, user_id: user?.id ?? null, guest_name: user ? null : guestName.trim(), parent_id: replyTo?.id ?? null, content: commentText.trim(), tag: commentTag });
+    const { error } = await supabase.from("comments").insert({ benchmark_id: benchmark.databaseId, user_id: user?.id ?? null, guest_name: user ? null : guestName.trim(), parent_id: replyTo?.id ?? null, content: commentText.trim(), tag: commentTag, rating: commentRating, confidence: commentConfidence });
     setPosting(false);
     if (error) {
       showNotice(error.message);
       return;
     }
     setCommentText("");
+    setCommentRating("");
+    setCommentConfidence("");
     setReplyTo(null);
     await Promise.all([loadComments(), refreshCatalog()]);
     showNotice("Comment posted.");
@@ -679,7 +691,7 @@ function BenchmarkView({ benchmark, user, databaseReady, goToLogin, showNotice, 
             <div className="discussion-heading"><div><p className="eyebrow">Open discussion</p><h2>Community comments</h2></div><select value={filterTag} onChange={(event) => setFilterTag(event.target.value)} aria-label="Filter comments">{["All comments", "Metric validity", "Reproducibility", "Use case", "Data quality", "General"].map((item) => <option key={item}>{item}</option>)}</select></div>
             <form className="comment-composer" id="comment-form" onSubmit={submitComment}>
               <div className="composer-top"><span className="avatar">{user ? initials(githubName(user)) : initials(guestName || "Guest")}</span><div><strong>{user ? "Add to the discussion" : "Comment without logging in"}</strong><span>Share what you observed and the context needed to interpret it.</span></div></div>
-              {databaseReady && <><div className="composer-options"><div className="comment-fields">{!user && <label className="guest-name-field">Display name <input value={guestName} onChange={(event) => setGuestName(event.target.value)} placeholder="Your name" minLength={2} maxLength={80} required /></label>}<label>Topic <select value={commentTag} onChange={(event) => setCommentTag(event.target.value)}>{["General", "Metric validity", "Reproducibility", "Use case", "Data quality"].map((item) => <option key={item}>{item}</option>)}</select></label></div>{replyTo && <div className="reply-target">Replying to @{replyTo.author}<button type="button" onClick={() => setReplyTo(null)}>×</button></div>}</div><textarea value={commentText} onChange={(event) => setCommentText(event.target.value)} placeholder="What do you wish you had known before using this benchmark?" rows={4} minLength={2} required /></>}
+              {databaseReady && <><div className="composer-options"><div className="comment-fields">{!user && <label className="guest-name-field">Display name <input value={guestName} onChange={(event) => setGuestName(event.target.value)} placeholder="Your name" minLength={2} maxLength={80} required /></label>}<label>Topic <select value={commentTag} onChange={(event) => setCommentTag(event.target.value)}>{["General", "Metric validity", "Reproducibility", "Use case", "Data quality"].map((item) => <option key={item}>{item}</option>)}</select></label><label>Rating <select value={commentRating} onChange={(event) => setCommentRating(Number(event.target.value) || "")} required><option value="">Select</option>{Array.from({ length: 10 }, (_, index) => index + 1).map((value) => <option key={value} value={value}>{value}{value === 1 ? " — Very weak" : value === 5 ? " — Mixed" : value === 10 ? " — Excellent" : ""}</option>)}</select></label><label>Confidence <select value={commentConfidence} onChange={(event) => setCommentConfidence(Number(event.target.value) || "")} required><option value="">Select</option>{Array.from({ length: 5 }, (_, index) => index + 1).map((value) => <option key={value} value={value}>{value}{value === 1 ? " — Low" : value === 3 ? " — Medium" : value === 5 ? " — High" : ""}</option>)}</select></label></div>{replyTo && <div className="reply-target">Replying to @{replyTo.author}<button type="button" onClick={() => setReplyTo(null)}>×</button></div>}</div><textarea value={commentText} onChange={(event) => setCommentText(event.target.value)} placeholder="What do you wish you had known before using this benchmark?" rows={4} minLength={2} required /></>}
               <div className="composer-footer"><span>Be specific, constructive, and link evidence when possible.</span><button className="primary-button" type="submit" disabled={posting || !databaseReady}>{databaseReady ? (posting ? "Posting…" : "Post comment") : "Database pending"}</button></div>
             </form>
             <div className="comments-list">
@@ -698,7 +710,7 @@ function CommentCard({ comment, own, onHelpful, onReply, onEdit, onDelete, onRep
   return (
     <article className={`comment-card ${comment.parentId ? "reply" : ""}`}>
       <div className="comment-author">{comment.avatar ? <img className="avatar avatar-image" src={comment.avatar} alt="" /> : <span className="avatar">{comment.initials}</span>}<div><strong>{comment.author}</strong><span>{comment.affiliation}</span></div><time>{comment.time}</time></div>
-      <div className="comment-tags"><span>{comment.tag}</span>{comment.version && <span className="version">Used {comment.version}</span>}</div><p>{comment.body}</p>{comment.evidence && <div className="evidence"><strong>Evidence</strong><a href={comment.evidence} target="_blank" rel="noreferrer">{comment.evidence}</a></div>}
+      <div className="comment-tags"><span>{comment.tag}</span>{comment.rating !== undefined && <span className="score">Rating: {comment.rating}/10</span>}{comment.confidence !== undefined && <span className="confidence">Confidence: {comment.confidence}/5</span>}{comment.version && <span className="version">Used {comment.version}</span>}</div><p>{comment.body}</p>{comment.evidence && <div className="evidence"><strong>Evidence</strong><a href={comment.evidence} target="_blank" rel="noreferrer">{comment.evidence}</a></div>}
       <div className="comment-actions"><button className={comment.voted ? "voted" : ""} onClick={onHelpful}>↑ Helpful <span>{comment.helpful}</span></button><button onClick={onReply}>Reply</button>{own && <><button onClick={onEdit}>Edit</button><button onClick={onDelete}>Delete</button></>}<button onClick={onShare}>Share</button>{!own && <button className="report" onClick={onReport}>Report</button>}</div>
     </article>
   );

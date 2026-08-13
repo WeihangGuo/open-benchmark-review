@@ -287,9 +287,9 @@ begin
   end if;
 
   insert into public.benchmarks (
-    slug, name, category, status, submitted_by, submission_note
+    slug, name, summary, category, status, submitted_by, submission_note
   ) values (
-    v_slug, trim(p_name), p_category, 'pending', auth.uid(), nullif(trim(p_note), '')
+    v_slug, trim(p_name), coalesce(nullif(trim(p_note), ''), ''), p_category, 'pending', auth.uid(), nullif(trim(p_note), '')
   ) returning id into v_id;
 
   insert into public.benchmark_sources (benchmark_id, source_type, url, canonical_id)

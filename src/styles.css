@@ -78,8 +78,8 @@ main { min-height: calc(100vh - 190px); }
 .category-badge.generation { color: #41616c; background: var(--blue-soft); }
 .category-badge.robotics { color: #875027; background: var(--orange-soft); }
 .benchmark-summary { max-width: 760px; margin: 10px 0; color: #4e5559; font-size: 12px; line-height: 1.5; }
-.tag-row, .topic-list { display: flex; flex-wrap: wrap; gap: 5px; }
-.tag-row span, .topic-list span { border-radius: 2px; padding: 3px 6px; color: #646b70; background: #e9eaea; font-size: 9px; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag-row span { border-radius: 2px; padding: 3px 6px; color: #646b70; background: #e9eaea; font-size: 9px; }
 .benchmark-meta { padding-left: 18px; border-left: 1px solid var(--soft-line); display: flex; flex-direction: column; gap: 7px; }
 .benchmark-meta > div { display: flex; justify-content: space-between; gap: 8px; }
 .benchmark-meta span { color: #858a8d; font-size: 9px; }
